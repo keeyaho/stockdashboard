@@ -130,7 +130,7 @@ if reasons:
         for r in reasons:
             st.markdown(f"<div style='font-size:9px; color:#f85149; padding:1px 0;'>• {r}</div>", unsafe_allow_html=True)
 
-# 2. 글로벌 매크로 지표 (기준치 복구 및 가로 정렬)
+# 2. 글로벌 매크로 지표 (기준치 명시 및 가로 정렬)
 st.subheader("🌐 글로벌 매크로 지표")
 us10_status = "🟢" if (us10 and us10 < 4.75) else "🚨"
 us30_status = "🟢" if (us30 and us30 < 5.20) else "🚨"
@@ -142,7 +142,7 @@ us30_txt = f"{us30:.2f}%" if us30 else "N/A"
 wti_txt = f"${wti:.2f}" if wti else "N/A"
 copper_txt = f"${copper:.2f}" if copper else "N/A"
 
-st.markdown(f"""
+macro_html = f"""
     <div style="display: flex; justify-content: space-between; align-items: center; background-color: rgba(128,128,128,0.04); padding: 5px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.15);">
         <div style="text-align: center; flex: 1;">
             <div style="font-size: 8px; color: gray; white-space: nowrap;">美 10년 (기준:4.75%)</div>
@@ -164,13 +164,14 @@ st.markdown(f"""
             <div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{copper_status} {copper_txt}</div>
         </div>
     </div>
-""", unsafe_allow_html=True)
+"""
+st.markdown(macro_html, unsafe_allow_html=True)
 
-# 3. 엔비디아 지표 (기준치 복구)
+# 3. 엔비디아 지표
 st.subheader("🍏 엔비디아 지표")
 if nvda_price:
     nvda_status = "🟢" if nvda_drawdown > -10 else ("🟡" if nvda_drawdown > -20 else "🔴")
-    st.markdown(f"""
+    nvda_html = f"""
         <div style="display: flex; justify-content: space-between; align-items: center; background-color: rgba(128,128,128,0.04); padding: 5px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.15);">
             <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">현재가</div><div style="font-size: 10px; font-weight: bold;">${nvda_price:.2f}</div></div>
             <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 16px;"></div>
@@ -181,27 +182,28 @@ if nvda_price:
                 <div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{nvda_status} {nvda_drawdown:.2f}%</div>
             </div>
         </div>
-    """, unsafe_allow_html=True)
+    """
+    st.markdown(nvda_html, unsafe_allow_html=True)
 
-# 차트 탭 (with 중복 버그 수정 및 각 인덱스 분리 선언)
-tabs = st.tabs(["NVDA", "삼성전자", "TSMC"])
-with tabs[0]:
+# 차트 탭 (인덱스로 확실하게 차트 구분 분리)
+t1, t2, t3 = st.tabs(["NVDA", "삼성전자", "TSMC"])
+with t1:
     if nvda_hist is not None: st.line_chart(nvda_hist["Close"], height=100)
-with tabs[1]:
+with t2:
     samsung_hist = get_history("005930.KS")
     if samsung_hist is not None: st.line_chart(samsung_hist["Close"], height=100)
-with tabs[2]:
+with t3:
     tsmc_hist = get_history("TSM")
     if tsmc_hist is not None: st.line_chart(tsmc_hist["Close"], height=100)
 
-# 4. 📊 밸류에이션 점검 섹션 (선행 / 후행 정상 분리 복구)
+# 4. 📊 밸류에이션 점검 섹션 (선행 / 후행 완벽 출력 구조)
 st.markdown("<hr style='margin: 10px 0; border:0; border-top:1px dashed rgba(128,128,128,0.2);'/>", unsafe_allow_html=True)
 st.subheader("📊 밸류에이션 점검 (기준: 삼성/TSMC 비율 1.0 미만)")
 
 # [선행 PER 영역]
 st.markdown("#### ⏩ 12M 선행(Forward) PER")
 f_status = "🟢안정" if forward_ratio < 0.7 else ("🟡주의" if forward_ratio < 1.0 else "🔴고평가")
-st.markdown(f"""
+f_pe_html = f"""
     <div style="display: flex; justify-content: space-between; align-items: center; background-color: rgba(128,128,128,0.04); padding: 5px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.15);">
         <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">삼성 선행</div><div style="font-size: 10px; font-weight: bold;">{samsung_f_pe:.2f}</div></div>
         <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 16px;"></div>
