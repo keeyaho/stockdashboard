@@ -130,7 +130,7 @@ if reasons:
         for r in reasons:
             st.markdown(f"<div style='font-size:9px; color:#f85149; padding:1px 0;'>• {r}</div>", unsafe_allow_html=True)
 
-# 2. 글로벌 매크로 지표 (가로 한 줄 초소형 정렬)
+# 2. 글로벌 매크로 지표 (기준치 복구 및 가로 정렬)
 st.subheader("🌐 글로벌 매크로 지표")
 us10_status = "🟢" if (us10 and us10 < 4.75) else "🚨"
 us30_status = "🟢" if (us30 and us30 < 5.20) else "🚨"
@@ -144,17 +144,29 @@ copper_txt = f"${copper:.2f}" if copper else "N/A"
 
 st.markdown(f"""
     <div style="display: flex; justify-content: space-between; align-items: center; background-color: rgba(128,128,128,0.04); padding: 5px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.15);">
-        <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">美 10년</div><div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{us10_status}{us10_txt}</div></div>
-        <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 16px;"></div>
-        <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">美 30년</div><div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{us30_status}{us30_txt}</div></div>
-        <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 16px;"></div>
-        <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">WTI 원유</div><div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{wti_status}{wti_txt}</div></div>
-        <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 16px;"></div>
-        <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">구리 가격</div><div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{copper_status}{copper_txt}</div></div>
+        <div style="text-align: center; flex: 1;">
+            <div style="font-size: 8px; color: gray; white-space: nowrap;">美 10년 (기준:4.75%)</div>
+            <div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{us10_status} {us10_txt}</div>
+        </div>
+        <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 18px;"></div>
+        <div style="text-align: center; flex: 1;">
+            <div style="font-size: 8px; color: gray; white-space: nowrap;">美 30년 (기준:5.20%)</div>
+            <div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{us30_status} {us30_txt}</div>
+        </div>
+        <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 18px;"></div>
+        <div style="text-align: center; flex: 1;">
+            <div style="font-size: 8px; color: gray; white-space: nowrap;">WTI 원유 (기준:120)</div>
+            <div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{wti_status} {wti_txt}</div>
+        </div>
+        <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 18px;"></div>
+        <div style="text-align: center; flex: 1;">
+            <div style="font-size: 8px; color: gray; white-space: nowrap;">구리 가격 (기준:5.0)</div>
+            <div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{copper_status} {copper_txt}</div>
+        </div>
     </div>
 """, unsafe_allow_html=True)
 
-# 3. 엔비디아 지표 (가로 한 줄 초소형 정렬)
+# 3. 엔비디아 지표 (기준치 복구)
 st.subheader("🍏 엔비디아 지표")
 if nvda_price:
     nvda_status = "🟢" if nvda_drawdown > -10 else ("🟡" if nvda_drawdown > -20 else "🔴")
@@ -164,11 +176,14 @@ if nvda_price:
             <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 16px;"></div>
             <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">전고점(ATH)</div><div style="font-size: 10px; font-weight: bold;">${nvda_ath:.2f}</div></div>
             <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 16px;"></div>
-            <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">전고점 대비</div><div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{nvda_status}{nvda_drawdown:.2f}%</div></div>
+            <div style="text-align: center; flex: 1;">
+                <div style="font-size: 8px; color: gray; white-space: nowrap;">ATH 대비 (기준:-20%)</div>
+                <div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{nvda_status} {nvda_drawdown:.2f}%</div>
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
-# 차트 탭 (높이 100px 미니멀 제한)
+# 차트 탭 (with 중복 버그 수정 및 각 인덱스 분리 선언)
 tabs = st.tabs(["NVDA", "삼성전자", "TSMC"])
 with tabs[0]:
     if nvda_hist is not None: st.line_chart(nvda_hist["Close"], height=100)
@@ -179,20 +194,14 @@ with tabs[2]:
     tsmc_hist = get_history("TSM")
     if tsmc_hist is not None: st.line_chart(tsmc_hist["Close"], height=100)
 
-# 4. 📊 밸류에이션 점검 섹션 (초소형 테이블형 정렬)
+# 4. 📊 밸류에이션 점검 섹션 (선행 / 후행 정상 분리 복구)
 st.markdown("<hr style='margin: 10px 0; border:0; border-top:1px dashed rgba(128,128,128,0.2);'/>", unsafe_allow_html=True)
-st.subheader("📊 밸류에이션 점검")
+st.subheader("📊 밸류에이션 점검 (기준: 삼성/TSMC 비율 1.0 미만)")
 
-# 선행 PER 한 줄 요약
+# [선행 PER 영역]
 st.markdown("#### ⏩ 12M 선행(Forward) PER")
 f_status = "🟢안정" if forward_ratio < 0.7 else ("🟡주의" if forward_ratio < 1.0 else "🔴고평가")
 st.markdown(f"""
     <div style="display: flex; justify-content: space-between; align-items: center; background-color: rgba(128,128,128,0.04); padding: 5px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.15);">
         <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">삼성 선행</div><div style="font-size: 10px; font-weight: bold;">{samsung_f_pe:.2f}</div></div>
         <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 16px;"></div>
-        <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">TSMC 선행</div><div style="font-size: 10px; font-weight: bold;">{tsmc_f_pe:.2f}</div></div>
-        <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 16px;"></div>
-        <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">비율 (상태)</div><div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{forward_ratio:.2f} ({f_status})</div></div>
-    </div>
-""", unsafe_allow_html=True)
-
