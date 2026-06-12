@@ -36,12 +36,9 @@ def get_latest(ticker):
         return None
     return float(hist["Close"].iloc[-1])
 
-# 💡 선행(Forward) 및 후행(Trailing) PER을 명확히 구분하여 가져오는 고도화 함수
+# 선행(Forward) 및 후행(Trailing) PER을 명확히 구분하여 가져오는 고도화 함수
 @st.cache_data(ttl=60)
 def get_pe_detailed(ticker, pe_type="forward"):
-    """
-    pe_type: 'forward' 또는 'trailing'
-    """
     info = get_info(ticker)
     key = "forwardPE" if pe_type == "forward" else "trailingPE"
     pe = info.get(key)
@@ -49,7 +46,7 @@ def get_pe_detailed(ticker, pe_type="forward"):
     if pe:
         return float(pe)
         
-    # [안정 장치 1] 클라우드 IP 차단으로 .info가 막혔을 때 실시간 주가와 EPS 기준 직접 역산
+    # [안정 장치] .info 호출이 막혔을 때 실시간 주가와 최근 실적 기반 직접 역산
     try:
         ticker_obj = yf.Ticker(ticker)
         hist = ticker_obj.history(period="1d")
@@ -60,7 +57,6 @@ def get_pe_detailed(ticker, pe_type="forward"):
         eps_key = "forwardEps" if pe_type == "forward" else "trailingEps"
         eps = info.get(eps_key)
         
-        # [안정 장치 2] EPS마저 완전히 빈 값일 때를 대비한 최신 가이드 데이터 백업 매핑
         if not eps:
             if ticker == "005930.KS":
                 eps = 13500.0 if pe_type == "forward" else 9500.0
@@ -72,7 +68,6 @@ def get_pe_detailed(ticker, pe_type="forward"):
     except:
         pass
         
-    # 최악의 API 마비 상황용 디폴트값 리턴 (UI 브레이크 방지)
     fallback = {
         "005930.KS": {"forward": 18.5, "trailing": 24.2},
         "TSM": {"forward": 23.0, "trailing": 28.5}
@@ -86,26 +81,22 @@ def get_pe_detailed(ticker, pe_type="forward"):
 @st.fragment
 def run_dashboard(interval_seconds=60):
     
-    # -------------------------
-    # 데이터 수집 (매 실행마다 최신화)
-    # -------------------------
+    # 데이터 수집
     us10 = get_latest("^TNX")
     us30 = get_latest("^TYX")
     wti = get_latest("CL=F")
     copper = get_latest("HG=F")
 
-    # 엔비디아 데이터 처리
+    # 엔비디아 데이터 처리 (💡 오타 수정 완료)
     nvda_hist = get_history("NVDA")
     if nvda_hist is not None and not nvda_hist.empty:
         nvda_price = float(nvda_hist["Close"].iloc[-1])
-        nvda_ath = float(nvda_hist["High".max()]) if "High" in nvda_hist.columns else nvda_price
-        # 실제 ATH 안전 확보를 위해 전체 히스토리에서 계산
-        nvda_ath = float(nvda_hist["High"].max())
+        nvda_ath = float(nvda_hist["High"].max())  # 이 부분의 문법 에러를 해결했습니다.
         nvda_drawdown = ((nvda_price - nvda_ath) / nvda_ath) * 100
     else:
         nvda_price, nvda_ath, nvda_drawdown = None, None, None
 
-    # 🌟 선행 / 후행 PER 데이터 수집 및 비율 계산
+    # 선행 / 후행 PER 데이터 수집
     samsung_f_pe = get_pe_detailed("005930.KS", "forward")
     tsmc_f_pe = get_pe_detailed("TSM", "forward")
     forward_ratio = samsung_f_pe / tsmc_f_pe if tsmc_f_pe else 1.0
@@ -114,9 +105,7 @@ def run_dashboard(interval_seconds=60):
     tsmc_t_pe = get_pe_detailed("TSM", "trailing")
     trailing_ratio = samsung_t_pe / tsmc_t_pe if tsmc_t_pe else 1.0
 
-    # -------------------------
-    # 리스크 점수 계산 및 감점 로직
-    # -------------------------
+    # 리스크 스코어링
     score = 100
     reasons = []
 
@@ -132,7 +121,6 @@ def run_dashboard(interval_seconds=60):
         score -= 10
         reasons.append(f"유가 경고 (${wti:.2f})")
 
-    # 💡 1. 구리 기준 수치 5.00으로 변경 및 로직 적용
     if copper and copper <= 5.0:
         score -= 10
         reasons.append(f"구리 가격 경고 (${copper:.2f})")
@@ -141,7 +129,6 @@ def run_dashboard(interval_seconds=60):
         score -= 20
         reasons.append(f"NVDA 경고 ({nvda_drawdown:.2f}%)")
 
-    # 💡 2. PER 감점 기준은 선행(Forward) PER 비율을 메인 지표로 채택하여 판단
     if forward_ratio >= 1:
         score -= 30
         reasons.append(f"삼성 선행 PER ≥ TSMC 선행 PER (비율: {forward_ratio:.2f})")
@@ -152,8 +139,6 @@ def run_dashboard(interval_seconds=60):
     # -------------------------
     # UI 렌더링 시작
     # -------------------------
-    
-    # 1. 최상단 상태 바
     if score >= 80:
         st.success(f"🟢 정상 ({score}점)")
     elif score >= 60:
@@ -161,7 +146,7 @@ def run_dashboard(interval_seconds=60):
     else:
         st.error(f"🔴 경고 ({score}점)")
 
-    # 2. 매크로 지표 섹션 (구리 기준 수치 반영)
+    # 매크로 지표 섹션
     st.subheader("🌐 글로벌 매크로 지표")
     c1, c2, c3, c4 = st.columns(4)
     
@@ -184,13 +169,12 @@ def run_dashboard(interval_seconds=60):
         c3.metric("WTI 원유", "N/A")
 
     if copper:
-        # 구리 기준 수치 5.00 동적 표시 적용
         copper_delta = "기준 $5.00 초과 (정상)" if copper > 5.00 else "🚨 기준 $5.00 이하 (경고)"
         c4.metric(label="닥터 코퍼 (구리)", value=f"${copper:.2f}", delta=copper_delta, delta_color="normal" if copper > 5.00 else "inverse")
     else:
         c4.metric("닥터 코퍼 (구리)", "N/A")
 
-    # 3. 엔비디아 및 주가 차트 섹션
+    # 엔비디아 섹션
     st.subheader("엔비디아")
     if nvda_price:
         mc1, mc2, mc3 = st.columns(3)
@@ -216,11 +200,10 @@ def run_dashboard(interval_seconds=60):
         else:
             st.success(f"🟢 전고점 대비 {nvda_drawdown:.2f}%")
 
-    # 4. 🌟 버블 점검 섹션 (선행/후행 구조적 분리 및 게이지 차트 병렬 배치)
+    # 밸류에이션 점검 섹션 (선행 vs 후행 PER)
     st.markdown("---")
     st.subheader("📊 밸류에이션 점검 (선행 vs 후행 PER)")
     
-    # 두 개의 영역(탭 또는 좌우 컬럼)으로 나누어 선행과 후행을 완벽히 대조합니다.
     left_pe_col, right_pe_col = st.columns(2)
     
     with left_pe_col:
@@ -239,7 +222,7 @@ def run_dashboard(interval_seconds=60):
             
         fig_f = go.Figure(go.Indicator(
             mode="gauge+number", value=forward_ratio,
-            title={"text": "선행 PER 관제탑"},
+            title={"text": "선행 PER 비율"},
             gauge={"axis": {"range": [0, 1.2]}, "threshold": {"line": {"color": "red", "width": 4}, "thickness": 0.75, "value": 1.0}}
         ))
         fig_f.update_layout(height=200, margin=dict(l=10, r=10, t=30, b=10))
@@ -261,13 +244,13 @@ def run_dashboard(interval_seconds=60):
             
         fig_t = go.Figure(go.Indicator(
             mode="gauge+number", value=trailing_ratio,
-            title={"text": "후행 PER 관제탑"},
+            title={"text": "후행 PER 비율"},
             gauge={"axis": {"range": [0, 1.2]}, "threshold": {"line": {"color": "red", "width": 4}, "thickness": 0.75, "value": 1.0}}
         ))
         fig_t.update_layout(height=200, margin=dict(l=10, r=10, t=30, b=10))
         st.plotly_chart(fig_t, use_container_width=True)
 
-    # 5. 최종 감점 사유 리스트
+    # 리스크 요인 리스트
     st.markdown("---")
     st.subheader("🚨 실시간 리스크 요인")
     if len(reasons) == 0:
@@ -276,11 +259,9 @@ def run_dashboard(interval_seconds=60):
         for r in reasons:
             st.warning(r)
 
-    # ⏱️ 대기 후 재실행 로직
+    # 대기 후 재실행
     time.sleep(interval_seconds)
     st.rerun()
 
-# -------------------------
-# 프로그램 메인 실행
-# -------------------------
+# 프로그램 실행
 run_dashboard(interval_seconds=60)
