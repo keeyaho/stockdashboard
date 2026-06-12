@@ -161,18 +161,18 @@ def run_dashboard(interval_seconds=60):
     else:
         c3.metric("WTI 원유", "N/A")
 
-    # 닥터 코퍼 구리 (기준: $3.50)
+    # 닥터 코퍼 구리 (기준: $5.0)
     if copper:
         # 구리는 가격이 떨어지면 위험하므로 로직 반대
-        copper_delta = f"기준 $3.50 초과 (정상)" if copper > 3.50 else f"🚨 기준 $3.50 이하 (경고)"
+        copper_delta = f"기준 $5.00 초과 (정상)" if copper > 5.00 else f"🚨 기준 $5.00 이하 (경고)"
         c4.metric(
-            label="닥터 코퍼 (구리)", 
+            label="구리 (구리)", 
             value=f"${copper:.2f}", 
             delta=copper_delta, 
             delta_color="normal" if copper > 3.50 else "inverse"
         )
     else:
-        c4.metric("닥터 코퍼 (구리)", "N/A")
+        c4.metric("구리 (구리)", "N/A")
 
     # 3. 엔비디아 및 주가 차트 섹션
     st.subheader("엔비디아")
