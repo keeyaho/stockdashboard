@@ -2,36 +2,24 @@ import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
 
-# 1. 페이지 설정 (모바일 centered 구조)
+# 1. 페이지 설정 (모바일 최적화)
 st.set_page_config(
     page_title="AI 사이클 관제센터",
     layout="centered"
 )
 
-# 🚨 [모바일 초소형 뷰포트 및 여백 제어 CSS]
+# 기본 폰트 크기 및 상단 타이틀 소형화 스타일 주입
 st.markdown("""
     <style>
-    /* 화면 좌우 여백을 최소화하여 모바일 꽉 찬 화면 구현 */
-    .block-container {
-        padding-top: 0.5rem !important;
-        padding-bottom: 0.5rem !important;
-        padding-left: 0.4rem !important;
-        padding-right: 0.4rem !important;
-    }
-    /* Streamlit 자체 제목/소제목 폰트 강제 축소 */
-    h3 { font-size: 13px !important; font-weight: bold; margin-top: 10px !important; margin-bottom: 4px !important; }
+    html, body, p, span, label, div { font-size: 11px !important; }
+    h3 { font-size: 13px !important; font-weight: bold; margin-top: 12px !important; margin-bottom: 4px !important; }
     h4 { font-size: 11px !important; font-weight: bold; margin-top: 8px !important; margin-bottom: 2px !important; }
-    button[data-baseweb="tab"] p { font-size: 10px !important; }
+    .block-container { padding-top: 1rem !important; padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+    div[data-testid="metric-container"] { padding: 2px !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# 상단 타이틀 컴팩트 디자인
-st.markdown("""
-    <div style="margin-bottom: 10px;">
-        <span style="font-size: 16px; font-weight: bold;">📈 매도 점검</span>
-        <span style="font-size: 9px; color: gray; margin-left: 6px;">AI 관제센터 — 1분 자동 갱신</span>
-    </div>
-""", unsafe_allow_html=True)
+st.subheader("📈 매도 점검 (1분 자동 갱신)")
 
 # -------------------------
 # 데이터 캐싱 및 로드 함수
@@ -119,56 +107,48 @@ elif forward_ratio >= 0.7: score -= 15; reasons.append(f"삼성 선행 PER TSMC 
 
 # 1. 종합 상태 배너
 if score >= 80:
-    st.markdown(f"<div style='font-size:11px; font-weight:bold; color:#238636; background-color:rgba(35,134,54,0.08); padding:5px; border-radius:4px; margin-bottom:8px;'>🟢 정상 ({score}점)</div>", unsafe_allow_html=True)
+    st.success(f"🟢 정상 ({score}점)")
 elif score >= 60:
-    st.markdown(f"<div style='font-size:11px; font-weight:bold; color:#d29922; background-color:rgba(210,153,34,0.08); padding:5px; border-radius:4px; margin-bottom:8px;'>🟡 주의 ({score}점)</div>", unsafe_allow_html=True)
+    st.warning(f"🟡 주의 ({score}점)")
 else:
-    st.markdown(f"<div style='font-size:11px; font-weight:bold; color:#f85149; background-color:rgba(248,81,73,0.08); padding:5px; border-radius:4px; margin-bottom:8px;'>🔴 경고 ({score}점)</div>", unsafe_allow_html=True)
+    st.error(f"🔴 경고 ({score}점)")
 
 if reasons:
     with st.expander("🚨 주요 리스크 요인", expanded=True):
         for r in reasons:
-            st.markdown(f"<div style='font-size:9px; color:#f85149; padding:1px 0;'>• {r}</div>", unsafe_allow_html=True)
+            st.write(f"• {r}")
 
-# 2. 글로벌 매크로 지표
+# 2. 글로벌 매크로 지표 (순정 컬럼 가로 4열 배치)
 st.subheader("🌐 글로벌 매크로 지표")
-us10_status = "🟢" if (us10 and us10 < 4.75) else "🚨"
-us30_status = "🟢" if (us30 and us30 < 5.20) else "🚨"
-wti_status = "🟢" if (wti and wti < 120) else "🚨"
-copper_status = "🟢" if (copper and copper > 5.00) else "🚨"
+m1, m2, m3, m4 = st.columns(4)
 
-us10_txt = f"{us10:.2f}%" if us10 else "N/A"
-us30_txt = f"{us30:.2f}%" if us30 else "N/A"
-wti_txt = f"${wti:.2f}" if wti else "N/A"
-copper_txt = f"${copper:.2f}" if copper else "N/A"
+us10_val = f"{us10:.2f}%" if us10 else "N/A"
+us10_d = "🚨경고" if (us10 and us10 >= 4.75) else "🟢정상"
+m1.metric("美10년(4.75)", us10_val, delta=us10_d, delta_color="inverse" if "🚨" in us10_d else "normal")
 
-macro_html = (
-    '<div style="display:flex; justify-content:space-between; align-items:center; background-color:rgba(128,128,128,0.04); padding:5px; border-radius:4px; border:1px solid rgba(128,128,128,0.15);">'
-    '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray; white-space:nowrap;">美 10년 (기준:4.75%)</div><div style="font-size:10px; font-weight:bold; white-space:nowrap;">' + us10_status + ' ' + us10_txt + '</div></div>'
-    '<div style="border-left:1px solid rgba(128,128,128,0.15); height:18px;"></div>'
-    '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray; white-space:nowrap;">美 30년 (기준:5.20%)</div><div style="font-size:10px; font-weight:bold; white-space:nowrap;">' + us30_status + ' ' + us30_txt + '</div></div>'
-    '<div style="border-left:1px solid rgba(128,128,128,0.15); height:18px;"></div>'
-    '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray; white-space:nowrap;">WTI 원유 (기준:120)</div><div style="font-size:10px; font-weight:bold; white-space:nowrap;">' + wti_status + ' ' + wti_txt + '</div></div>'
-    '<div style="border-left:1px solid rgba(128,128,128,0.15); height:18px;"></div>'
-    '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray; white-space:nowrap;">구리 가격 (기준:5.0)</div><div style="font-size:10px; font-weight:bold; white-space:nowrap;">' + copper_status + ' ' + copper_txt + '</div></div>'
-    '</div>'
-)
-st.markdown(macro_html, unsafe_allow_html=True)
+us30_val = f"{us30:.2f}%" if us30 else "N/A"
+us30_d = "🚨경고" if (us30 and us30 >= 5.20) else "🟢정상"
+m2.metric("美30년(5.20)", us30_val, delta=us30_d, delta_color="inverse" if "🚨" in us30_d else "normal")
 
-# 3. 엔비디아 지표
+wti_val = f"${wti:.2f}" if wti else "N/A"
+wti_d = "🚨경고" if (wti and wti >= 120) else "🟢정상"
+m3.metric("WTI유(120)", wti_val, delta=wti_d, delta_color="inverse" if "🚨" in wti_d else "normal")
+
+cop_val = f"${copper:.2f}" if copper else "N/A"
+cop_d = "🚨경고" if (copper and copper <= 5.0) else "🟢정상"
+m4.metric("구리(5.0)", cop_val, delta=cop_d, delta_color="inverse" if "🚨" in cop_d else "normal")
+
+
+# 3. 엔비디아 지표 (순정 컬럼 가로 3열 배치)
 st.subheader("🍏 엔비디아 지표")
-if nvda_price:
-    nvda_status = "🟢" if nvda_drawdown > -10 else ("🟡" if nvda_drawdown > -20 else "🔴")
-    nvda_html = (
-        '<div style="display:flex; justify-content:space-between; align-items:center; background-color:rgba(128,128,128,0.04); padding:5px; border-radius:4px; border:1px solid rgba(128,128,128,0.15);">'
-        '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray;">현재가</div><div style="font-size:10px; font-weight:bold;">$' + f"{nvda_price:.2f}" + '</div></div>'
-        '<div style="border-left:1px solid rgba(128,128,128,0.15); height:16px;"></div>'
-        '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray;">전고점(ATH)</div><div style="font-size:10px; font-weight:bold;">$' + f"{nvda_ath:.2f}" + '</div></div>'
-        '<div style="border-left:1px solid rgba(128,128,128,0.15); height:16px;"></div>'
-        '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray; white-space:nowrap;">ATH 대비 (기준:-20%)</div><div style="font-size:10px; font-weight:bold; white-space:nowrap;">' + nvda_status + ' ' + f"{nvda_drawdown:.2f}%" + '</div></div>'
-        '</div>'
-    )
-    st.markdown(nvda_html, unsafe_allow_html=True)
+n1, n2, n3 = st.columns(3)
+
+n1.metric("현재가", f"${nvda_price:.2f}" if nvda_price else "N/A")
+n2.metric("전고점(ATH)", f"${nvda_ath:.2f}" if nvda_ath else "N/A")
+
+nvda_d = "🚨경고" if (nvda_drawdown and nvda_drawdown <= -20) else "🟢정상"
+n3.metric("ATH대비(-20%)", f"{nvda_drawdown:.2f}%" if nvda_drawdown else "N/A", delta=nvda_d, delta_color="inverse" if "🚨" in nvda_d else "normal")
+
 
 # 차트 탭
 t1, t2, t3 = st.tabs(["NVDA", "삼성전자", "TSMC"])
@@ -181,16 +161,53 @@ with t3:
     tsmc_hist = get_history("TSM")
     if tsmc_hist is not None: st.line_chart(tsmc_hist["Close"], height=100)
 
-# 4. 📊 밸류에이션 점검 섹션 (멀티라인 따옴표 완전 철거 후 단일형 한 줄 결합 구조로 변경)
-st.markdown("<hr style='margin:10px 0; border:0; border-top:1px dashed rgba(128,128,128,0.2);'/>", unsafe_allow_html=True)
-st.subheader("📊 밸류에이션 점검 (기준: 삼성/TSMC 비율 1.0 미만)")
+
+# 4. 📊 밸류에이션 점검 섹션 (순정 함수 완벽 분리 배치)
+st.markdown("---")
+st.subheader("📊 밸류에이션 점검 (기준: 비율 1.0 미만)")
 
 # [선행 PER 영역]
 st.markdown("#### ⏩ 12M 선행(Forward) PER")
-f_status = "🟢안정" if forward_ratio < 0.7 else ("🟡주의" if forward_ratio < 1.0 else "🔴고평가")
-f_pe_html = (
-    '<div style="display:flex; justify-content:space-between; align-items:center; background-color:rgba(128,128,128,0.04); padding:5px; border-radius:4px; border:1px solid rgba(128,128,128,0.15);">'
-    '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray;">삼성 선행</div><div style="font-size:10px; font-weight:bold;">' + f"{samsung_f_pe:.2f}" + '</div></div>'
-    '<div style="border-left:1px solid rgba(128,128,128,0.15); height:16px;"></div>'
-    '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray;">TSMC 선행</div><div style="font-size:10px; font-weight:bold;">' + f"{tsmc_f_pe:.2f}" + '</div></div>'
-    '<div style="border-left:1px solid rgba(128,128,128,0.15); height:16px;"></div>'
+pf1, pf2, pf3 = st.columns(3)
+pf1.metric("삼성 선행", f"{samsung_f_pe:.2f}")
+pf2.metric("TSMC 선행", f"{tsmc_f_pe:.2f}")
+
+f_status = "🚨고평가" if forward_ratio >= 1.0 else ("🟡주의" if forward_ratio >= 0.7 else "🟢안정")
+pf3.metric("선행 비율", f"{forward_ratio:.2f}", delta=f_status, delta_color="inverse" if "🚨" in f_status else "normal")
+
+fig_f = go.Figure(go.Indicator(
+    mode="gauge+number", value=forward_ratio,
+    gauge={"axis": {"range": [0, 1.2], "tickmode": "array", "tickvals": [0, 0.6, 1.2], "tickfont": {"size": 6}}, "threshold": {"line": {"color": "red", "width": 2}, "thickness": 0.5, "value": 1.0}}
+))
+fig_f.update_layout(height=70, margin=dict(l=60, r=60, t=10, b=5))
+st.plotly_chart(fig_f, use_container_width=True)
+
+
+# [후행 PER 영역]
+st.markdown("#### ⏪ 12M 후행(Trailing) PER")
+pt1, pt2, pt3 = st.columns(3)
+pt1.metric("삼성 후행", f"{samsung_t_pe:.2f}")
+pt2.metric("TSMC 후행", f"{tsmc_t_pe:.2f}")
+
+t_status = "🚨고평가" if trailing_ratio >= 1.0 else ("🟡주의" if trailing_ratio >= 0.7 else "🟢안정")
+pt3.metric("후행 비율", f"{trailing_ratio:.2f}", delta=t_status, delta_color="inverse" if "🚨" in t_status else "normal")
+
+fig_t = go.Figure(go.Indicator(
+    mode="gauge+number", value=trailing_ratio,
+    gauge={"axis": {"range": [0, 1.2], "tickmode": "array", "tickvals": [0, 0.6, 1.2], "tickfont": {"size": 6}}, "threshold": {"line": {"color": "red", "width": 2}, "thickness": 0.5, "value": 1.0}}
+))
+fig_t.update_layout(height=70, margin=dict(l=60, r=60, t=10, b=5))
+st.plotly_chart(fig_t, use_container_width=True)
+
+
+# 🔄 [안전한 브라우저 새로고침 소스 주입] 60초마다 화면 새로고침
+st.components.v1.html(
+    """
+    <script>
+    setTimeout(function(){
+        window.parent.location.reload();
+    }, 60000);
+    </script>
+    """,
+    height=0
+)
