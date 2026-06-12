@@ -120,13 +120,59 @@ def run_dashboard(interval_seconds=60):
     else:
         st.error(f"🔴 경고 ({score}점)")
 
-    # 2. 매크로 지표 섹션
-    st.subheader("매크로")
+      # 2. 매크로 지표 섹션
+    st.subheader("🌐 글로벌 매크로 지표")
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("미국 10년물", f"{us10:.2f}%" if us10 else "N/A")
-    c2.metric("미국 30년물", f"{us30:.2f}%" if us30 else "N/A")
-    c3.metric("WTI", f"${wti:.2f}" if wti else "N/A")
-    c4.metric("구리", f"${copper:.2f}" if copper else "N/A")
+    
+    # 미국 10년물 (기준: 4.75%)
+    if us10:
+        us10_delta = f"기준 4.75% 미만 (정상)" if us10 < 4.75 else f"🚨 기준 4.75% 이상 (경고)"
+        # 기준치를 넘으면 빨간색(inverse), 안 넘으면 초록색(normal)으로 표시
+        c1.metric(
+            label="미국 10년물 금리", 
+            value=f"{us10:.2f}%", 
+            delta=us10_delta, 
+            delta_color="inverse" if us10 >= 4.75 else "normal"
+        )
+    else:
+        c1.metric("미국 10년물 금리", "N/A")
+
+    # 미국 30년물 (기준: 5.20%)
+    if us30:
+        us30_delta = f"기준 5.20% 미만 (정상)" if us30 < 5.20 else f"🚨 기준 5.20% 이상 (경고)"
+        c2.metric(
+            label="미국 30년물 금리", 
+            value=f"{us30:.2f}%", 
+            delta=us30_delta, 
+            delta_color="inverse" if us30 >= 5.20 else "normal"
+        )
+    else:
+        c2.metric("미국 30년물 금리", "N/A")
+
+    # WTI 원유 (기준: $120)
+    if wti:
+        wti_delta = f"기준 $120 미만 (정상)" if wti < 120 else f"🚨 기준 $120 이상 (경고)"
+        c3.metric(
+            label="WTI 원유", 
+            value=f"${wti:.2f}", 
+            delta=wti_delta, 
+            delta_color="inverse" if wti >= 120 else "normal"
+        )
+    else:
+        c3.metric("WTI 원유", "N/A")
+
+    # 닥터 코퍼 구리 (기준: $3.50)
+    if copper:
+        # 구리는 가격이 떨어지면 위험하므로 로직 반대
+        copper_delta = f"기준 $3.50 초과 (정상)" if copper > 3.50 else f"🚨 기준 $3.50 이하 (경고)"
+        c4.metric(
+            label="닥터 코퍼 (구리)", 
+            value=f"${copper:.2f}", 
+            delta=copper_delta, 
+            delta_color="normal" if copper > 3.50 else "inverse"
+        )
+    else:
+        c4.metric("닥터 코퍼 (구리)", "N/A")
 
     # 3. 엔비디아 및 주가 차트 섹션
     st.subheader("엔비디아")
