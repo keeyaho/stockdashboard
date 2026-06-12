@@ -8,14 +8,39 @@ st.set_page_config(
     layout="centered"
 )
 
-# 기본 폰트 크기 및 상단 타이틀 소형화 스타일 주입
+# 🚨 [모바일 강제 가로 정렬 및 초소형 폰트 제어 CSS]
 st.markdown("""
     <style>
-    html, body, p, span, label, div { font-size: 11px !important; }
+    /* 화면 좌우 여백을 최소화하여 모바일 꽉 찬 화면 구현 */
+    .block-container {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+        padding-left: 0.4rem !important;
+        padding-right: 0.4rem !important;
+    }
+    
+    /* 🚨 핵심: 모바일 기기에서도 st.columns가 세로로 꺾이지 않고 가로 한 줄을 유지하도록 강제 조치 */
+    div[data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 4px !important;
+    }
+    div[data-testid="column"] {
+        flex: 1 !important;
+        min-width: 0 !important;
+    }
+
+    /* Streamlit 자체 제목/소제목 폰트 및 메트릭 폰트 강제 축소 */
+    html, body, p, span, label, div { font-size: 10px !important; }
     h3 { font-size: 13px !important; font-weight: bold; margin-top: 12px !important; margin-bottom: 4px !important; }
     h4 { font-size: 11px !important; font-weight: bold; margin-top: 8px !important; margin-bottom: 2px !important; }
-    .block-container { padding-top: 1rem !important; padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
-    div[data-testid="metric-container"] { padding: 2px !important; }
+    button[data-baseweb="tab"] p { font-size: 10px !important; }
+    
+    /* 메트릭 박스 내부 여백 축소 */
+    div[data-testid="metric-container"] { padding: 1px !important; }
+    div[data-testid="stMetricValue"] { font-size: 11px !important; font-weight: bold !important; }
+    div[data-testid="stMetricDelta"] { font-size: 9px !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -118,7 +143,7 @@ if reasons:
         for r in reasons:
             st.write(f"• {r}")
 
-# 2. 글로벌 매크로 지표 (순정 컬럼 가로 4열 배치)
+# 2. 글로벌 매크로 지표 (이제 모바일에서도 무조건 가로 한 줄로 나열됩니다)
 st.subheader("🌐 글로벌 매크로 지표")
 m1, m2, m3, m4 = st.columns(4)
 
@@ -139,7 +164,7 @@ cop_d = "🚨경고" if (copper and copper <= 5.0) else "🟢정상"
 m4.metric("구리(5.0)", cop_val, delta=cop_d, delta_color="inverse" if "🚨" in cop_d else "normal")
 
 
-# 3. 엔비디아 지표 (순정 컬럼 가로 3열 배치)
+# 3. 엔비디아 지표 (모바일에서도 가로 3열 유지)
 st.subheader("🍏 엔비디아 지표")
 n1, n2, n3 = st.columns(3)
 
@@ -162,7 +187,7 @@ with t3:
     if tsmc_hist is not None: st.line_chart(tsmc_hist["Close"], height=100)
 
 
-# 4. 📊 밸류에이션 점검 섹션 (순정 함수 완벽 분리 배치)
+# 4. 📊 밸류에이션 점검 섹션 (모바일 가로 3열 배치)
 st.markdown("---")
 st.subheader("📊 밸류에이션 점검 (기준: 비율 1.0 미만)")
 
