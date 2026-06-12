@@ -34,7 +34,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -------------------------
-# 데이터 캐싱 및 로드 함수 (기존 로직 유지)
+# 데이터 캐싱 및 로드 함수
 # -------------------------
 @st.cache_data(ttl=60)
 def get_history(ticker):
@@ -79,7 +79,7 @@ def get_pe_detailed(ticker, pe_type="forward"):
     return fallback.get(ticker, {}).get(pe_type, 20.0)
 
 # -------------------------
-# ⚡ 데이터 수집 및 연산 실행 (프래그먼트 무한루프 제거로 먹통 해결)
+# ⚡ 데이터 수집 및 연산 실행
 # -------------------------
 us10 = get_latest("^TNX")
 us30 = get_latest("^TYX")
@@ -114,7 +114,7 @@ if forward_ratio >= 1: score -= 30; reasons.append(f"삼성 선행 PER ≥ TSMC 
 elif forward_ratio >= 0.7: score -= 15; reasons.append(f"삼성 선행 PER TSMC 근접 ({forward_ratio:.2f})")
 
 # -------------------------
-# UI 렌더링 영역 (100% 미니어처 가로 정렬 HTML 방식)
+# UI 렌더링 영역
 # -------------------------
 
 # 1. 종합 상태 배너
@@ -192,3 +192,7 @@ st.markdown(f"""
         <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 16px;"></div>
         <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">TSMC 선행</div><div style="font-size: 10px; font-weight: bold;">{tsmc_f_pe:.2f}</div></div>
         <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 16px;"></div>
+        <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">비율 (상태)</div><div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{forward_ratio:.2f} ({f_status})</div></div>
+    </div>
+""", unsafe_allow_html=True)
+
