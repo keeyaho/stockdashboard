@@ -8,26 +8,31 @@ st.set_page_config(
     layout="centered"
 )
 
-# 🚨 [모바일 완전 꽉 찬 화면 및 제목 축소 CSS 스타일]
-st.markdown(
-    "<style>"
-    ".block-container { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; padding-left: 0.3rem !important; padding-right: 0.3rem !important; }"
-    "html, body, p, span, label, div { font-size: 10px !important; }"
-    "h3 { font-size: 13px !important; font-weight: bold; margin-top: 12px !important; margin-bottom: 6px !important; }"
-    "h4 { font-size: 11px !important; font-weight: bold; margin-top: 8px !important; margin-bottom: 2px !important; }"
-    'button[data-baseweb="tab"] p { font-size: 10px !important; }'
-    "</style>", 
-    unsafe_allow_html=True
-)
+# 🚨 [모바일 소형화 및 스타일 제어 CSS]
+st.markdown("""
+    <style>
+    /* 여백 최소화 */
+    .block-container {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+        padding-left: 0.4rem !important;
+        padding-right: 0.4rem !important;
+    }
+    /* 스마트폰 가독성을 위해 전체 기본 폰트 크기 세밀화 */
+    html, body, p, span, label, div { font-size: 11px !important; }
+    h3 { font-size: 13px !important; font-weight: bold; margin-top: 12px !important; margin-bottom: 6px !important; }
+    h4 { font-size: 11px !important; font-weight: bold; margin-top: 8px !important; margin-bottom: 2px !important; }
+    button[data-baseweb="tab"] p { font-size: 11px !important; }
+    
+    /* 카드 내부 간격 최소화 */
+    div[data-testid="stVerticalBlockBorderWrapper"] > div {
+        padding: 6px !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # 상단 타이틀 컴팩트 디자인
-st.markdown(
-    '<div style="margin-bottom: 10px;">'
-    '<span style="font-size: 15px; font-weight: bold;">📈 매도 점검</span>'
-    '<span style="font-size: 9px; color: gray; margin-left: 5px;">AI 관제센터 — 1분 자동 갱신</span>'
-    '</div>', 
-    unsafe_allow_html=True
-)
+st.caption("📈 매도 점검 | AI 사이클 관제센터 (1분 자동 갱신)")
 
 # -------------------------
 # 데이터 캐싱 및 로드 함수
@@ -110,95 +115,99 @@ if forward_ratio >= 1: score -= 30; reasons.append(f"삼성 선행 PER ≥ TSMC 
 elif forward_ratio >= 0.7: score -= 15; reasons.append(f"삼성 선행 PER TSMC 근접 ({forward_ratio:.2f})")
 
 # -------------------------
-# UI 렌더링 영역
+# UI 렌더링 영역 (순정 컴포넌트 기반 무오류 보장)
 # -------------------------
 
 # 1. 종합 상태 배너
 if score >= 80:
-    st.markdown(f"<div style='font-size:11px; font-weight:bold; color:#238636; background-color:rgba(35,134,54,0.08); padding:5px; border-radius:4px; margin-bottom:8px;'>🟢 정상 ({score}점)</div>", unsafe_allow_html=True)
+    st.success(f"🟢 정상 ({score}점)")
 elif score >= 60:
-    st.markdown(f"<div style='font-size:11px; font-weight:bold; color:#d29922; background-color:rgba(210,153,34,0.08); padding:5px; border-radius:4px; margin-bottom:8px;'>🟡 주의 ({score}점)</div>", unsafe_allow_html=True)
+    st.warning(f"🟡 주의 ({score}점)")
 else:
-    st.markdown(f"<div style='font-size:11px; font-weight:bold; color:#f85149; background-color:rgba(248,81,73,0.08); padding:5px; border-radius:4px; margin-bottom:8px;'>🔴 경고 ({score}점)</div>", unsafe_allow_html=True)
+    st.error(f"🔴 경고 ({score}점)")
 
 if reasons:
     with st.expander("🚨 주요 리스크 요인", expanded=True):
         for r in reasons:
-            st.markdown(f"<div style='font-size:9px; color:#f85149; padding:1px 0;'>• {r}</div>", unsafe_allow_html=True)
+            st.write(f"• {r}")
 
 
-# 2. 글로벌 매크로 지표 (안전한 문자열 결합 테이블 구조)
+# 2. 글로벌 매크로 지표 (순정 박스 레이아웃 - 모바일 잘림 완벽 해결)
 st.subheader("🌐 글로벌 매크로 지표")
-us10_status = "🟢" if (us10 and us10 < 4.75) else "🚨"
-us30_status = "🟢" if (us30 and us30 < 5.20) else "🚨"
-wti_status = "🟢" if (wti and wti < 120) else "🚨"
-copper_status = "🟢" if (copper and copper > 5.00) else "🚨"
+us10_status = "🟢정상" if (us10 and us10 < 4.75) else "🚨경고"
+us30_status = "🟢정상" if (us30 and us30 < 5.20) else "🚨경고"
+wti_status = "🟢정상" if (wti and wti < 120) else "🚨경고"
+copper_status = "🟢정상" if (copper and copper > 5.00) else "🚨경고"
 
-us10_txt = f"{us10:.2f}%" if us10 else "N/A"
-us30_txt = f"{us30:.2f}%" if us30 else "N/A"
-wti_txt = f"${wti:.2f}" if wti else "N/A"
-copper_txt = f"${copper:.2f}" if copper else "N/A"
-
-macro_table_lines = [
-    '<table style="width:100%; border-collapse:collapse; text-align:center; background-color:rgba(128,128,128,0.04); border:1px solid rgba(128,128,128,0.15); border-radius:4px; font-size:10px;">',
-    '  <tr style="color:gray; font-size:8px; background-color:rgba(128,128,128,0.02);">',
-    '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); width:25%;">美 10년<br>(4.75%)</th>',
-    '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:25%;">美 30년<br>(5.20%)</th>',
-    '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:25%;">WTI 원유<br>(120)</th>',
-    '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:25%;">구리 가격<br>(5.0)</th>',
-    '  </tr>',
-    '  <tr style="font-weight:bold;">',
-    f'    <td style="padding:6px; white-space:nowrap;">{us10_status} {us10_txt}</td>',
-    f'    <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15); white-space:nowrap;">{us30_status} {us30_txt}</td>',
-    f'    <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15); white-space:nowrap;">{wti_status} {wti_txt}</td>',
-    f'    <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15); white-space:nowrap;">{copper_status} {copper_txt}</td>',
-    '  </tr>',
-    '</table>'
-]
-st.markdown("".join(macro_table_lines), unsafe_allow_html=True)
+with st.container(border=True):
+    st.write(f"**美 10년물 (기준 4.75%)** : {us10_status} | **{us10:.2f}%**" if us10 else "美 10년물 : N/A")
+    st.write(f"**美 30년물 (기준 5.20%)** : {us30_status} | **{us30:.2f}%**" if us30 else "美 30년물 : N/A")
+    st.write(f"**WTI 원유 (기준 120)** : {wti_status} | **${wti:.2f}**" if wti else "WTI 원유 : N/A")
+    st.write(f"**구리 가격 (기준 5.0)** : {copper_status} | **${copper:.2f}**" if copper else "구리 가격 : N/A")
 
 
-# 3. 엔비디아 지표 (안전한 문자열 결합 테이블 구조)
+# 3. 엔비디아 지표 (순정 박스 레이아웃)
 st.subheader("🍏 엔비디아 지표")
 if nvda_price:
-    nvda_status = "🟢" if nvda_drawdown > -10 else ("🟡" if nvda_drawdown > -20 else "🔴")
-    nvda_table_lines = [
-        '<table style="width:100%; border-collapse:collapse; text-align:center; background-color:rgba(128,128,128,0.04); border:1px solid rgba(128,128,128,0.15); border-radius:4px; font-size:10px;">',
-        '  <tr style="color:gray; font-size:8px; background-color:rgba(128,128,128,0.02);">',
-        '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); width:33%;">현재가</th>',
-        '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:33%;">전고점 (ATH)</th>',
-        '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:34%;">ATH 대비 (-20%)</th>',
-        '  </tr>',
-        '  <tr style="font-weight:bold;">',
-        f'    <td style="padding:6px;">${nvda_price:.2f}</td>',
-        f'    <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15);">${nvda_ath:.2f}</td>',
-        f'    <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15); white-space:nowrap;">{nvda_status} {nvda_drawdown:.2f}%</td>',
-        '  </tr>',
-        '</table>'
-    ]
-    st.markdown("".join(nvda_table_lines), unsafe_allow_html=True)
+    nvda_status = "🟢정상" if nvda_drawdown > -10 else ("🟡주의" if nvda_drawdown > -20 else "🚨경고")
+    with st.container(border=True):
+        st.write(f"**현재가** : ${nvda_price:.2f} | **전고점(ATH)** : ${nvda_ath:.2f}")
+        st.write(f"**ATH 대비 (기준 -20%)** : {nvda_status} | **{nvda_drawdown:.2f}%**")
 
-# 차트 탭
+# 차트 탭 (높이 110px 컴팩트화)
 t1, t2, t3 = st.tabs(["NVDA", "삼성전자", "TSMC"])
 with t1:
-    if nvda_hist is not None: st.line_chart(nvda_hist["Close"], height=100)
+    if nvda_hist is not None: st.line_chart(nvda_hist["Close"], height=110)
 with t2:
     samsung_hist = get_history("005930.KS")
-    if samsung_hist is not None: st.line_chart(samsung_hist["Close"], height=100)
+    if samsung_hist is not None: st.line_chart(samsung_hist["Close"], height=110)
 with t3:
     tsmc_hist = get_history("TSM")
-    if tsmc_hist is not None: st.line_chart(tsmc_hist["Close"], height=100)
+    if tsmc_hist is not None: st.line_chart(tsmc_hist["Close"], height=110)
 
 
-# 4. 📊 밸류에이션 점검 섹션 (멀티라인 트리플 따옴표 제거 구조)
-st.markdown("<hr style='margin: 10px 0; border:0; border-top:1px dashed rgba(128,128,128,0.2);'/>", unsafe_allow_html=True)
+# 4. 📊 밸류에이션 점검 섹션 (순정 구조로 선행 / 후행 완벽 표기)
+st.markdown("---")
 st.subheader("📊 밸류에이션 점검 (기준: 비율 1.0 미만)")
 
 # [선행 PER 영역]
 st.markdown("#### ⏩ 12M 선행(Forward) PER")
-f_status = "🟢안정" if forward_ratio < 0.7 else ("🟡주의" if forward_ratio < 1.0 else "🔴고평가")
-f_table_lines = [
-    '<table style="width:100%; border-collapse:collapse; text-align:center; background-color:rgba(128,128,128,0.04); border:1px solid rgba(128,128,128,0.15); border-radius:4px; font-size:10px;">',
-    '  <tr style="color:gray; font-size:8px; background-color:rgba(128,128,128,0.02);">',
-    '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); width:33%;">삼성 선행</th>',
-    '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:33%;">TSMC 선행</th>',
+f_status = "🟢안정" if forward_ratio < 0.7 else ("🟡주의" if forward_ratio < 1.0 else "🚨고평가")
+with st.container(border=True):
+    st.write(f"**삼성 선행 PER** : {samsung_f_pe:.2f} | **TSMC 선행 PER** : {tsmc_f_pe:.2f}")
+    st.write(f"**선행 비율 (삼성/TSMC)** : **{forward_ratio:.2f}** ({f_status})")
+
+fig_f = go.Figure(go.Indicator(
+    mode="gauge+number", value=forward_ratio,
+    gauge={"axis": {"range": [0, 1.2], "tickmode": "array", "tickvals": [0, 0.6, 1.2], "tickfont": {"size": 7}}, "threshold": {"line": {"color": "red", "width": 2}, "thickness": 0.5, "value": 1.0}}
+))
+fig_f.update_layout(height=75, margin=dict(l=50, r=50, t=15, b=5))
+st.plotly_chart(fig_f, use_container_width=True)
+
+
+# [후행 PER 영역]
+st.markdown("#### ⏪ 12M 후행(Trailing) PER")
+t_status = "🟢안정" if trailing_ratio < 0.7 else ("🟡주의" if trailing_ratio < 1.0 else "🚨고평가")
+with st.container(border=True):
+    st.write(f"**삼성 후행 PER** : {samsung_t_pe:.2f} | **TSMC 후행 PER** : {tsmc_t_pe:.2f}")
+    st.write(f"**후행 비율 (삼성/TSMC)** : **{trailing_ratio:.2f}** ({t_status})")
+
+fig_t = go.Figure(go.Indicator(
+    mode="gauge+number", value=trailing_ratio,
+    gauge={"axis": {"range": [0, 1.2], "tickmode": "array", "tickvals": [0, 0.6, 1.2], "tickfont": {"size": 7}}, "threshold": {"line": {"color": "red", "width": 2}, "thickness": 0.5, "value": 1.0}}
+))
+fig_t.update_layout(height=75, margin=dict(l=50, r=50, t=15, b=5))
+st.plotly_chart(fig_t, use_container_width=True)
+
+
+# 🔄 [안전한 브라우저 새로고침] 60초마다 화면 새로고침
+st.components.v1.html(
+    """
+    <script>
+    setTimeout(function(){
+        window.parent.location.reload();
+    }, 60000);
+    </script>
+    """,
+    height=0
+)
