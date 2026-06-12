@@ -9,30 +9,25 @@ st.set_page_config(
 )
 
 # 🚨 [모바일 완전 꽉 찬 화면 및 제목 축소 CSS 스타일]
-st.markdown("""
-    <style>
-    /* 여백 최소화 */
-    .block-container {
-        padding-top: 0.5rem !important;
-        padding-bottom: 0.5rem !important;
-        padding-left: 0.3rem !important;
-        padding-right: 0.3rem !important;
-    }
-    /* 스트림릿 기본 텍스트 및 제목 축소 */
-    html, body, p, span, label, div { font-size: 10px !important; }
-    h3 { font-size: 13px !important; font-weight: bold; margin-top: 12px !important; margin-bottom: 6px !important; }
-    h4 { font-size: 11px !important; font-weight: bold; margin-top: 8px !important; margin-bottom: 2px !important; }
-    button[data-baseweb="tab"] p { font-size: 10px !important; }
-    </style>
-""", unsafe_allow_html=True)
+st.markdown(
+    "<style>"
+    ".block-container { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; padding-left: 0.3rem !important; padding-right: 0.3rem !important; }"
+    "html, body, p, span, label, div { font-size: 10px !important; }"
+    "h3 { font-size: 13px !important; font-weight: bold; margin-top: 12px !important; margin-bottom: 6px !important; }"
+    "h4 { font-size: 11px !important; font-weight: bold; margin-top: 8px !important; margin-bottom: 2px !important; }"
+    'button[data-baseweb="tab"] p { font-size: 10px !important; }'
+    "</style>", 
+    unsafe_allow_html=True
+)
 
 # 상단 타이틀 컴팩트 디자인
-st.markdown("""
-    <div style="margin-bottom: 10px;">
-        <span style="font-size: 15px; font-weight: bold;">📈 매도 점검</span>
-        <span style="font-size: 9px; color: gray; margin-left: 5px;">AI 관제센터 — 1분 자동 갱신</span>
-    </div>
-""", unsafe_allow_html=True)
+st.markdown(
+    '<div style="margin-bottom: 10px;">'
+    '<span style="font-size: 15px; font-weight: bold;">📈 매도 점검</span>'
+    '<span style="font-size: 9px; color: gray; margin-left: 5px;">AI 관제센터 — 1분 자동 갱신</span>'
+    '</div>', 
+    unsafe_allow_html=True
+)
 
 # -------------------------
 # 데이터 캐싱 및 로드 함수
@@ -132,7 +127,7 @@ if reasons:
             st.markdown(f"<div style='font-size:9px; color:#f85149; padding:1px 0;'>• {r}</div>", unsafe_allow_html=True)
 
 
-# 2. 글로벌 매크로 지표 (🚨 안전한 모바일용 테이블 정렬 구조)
+# 2. 글로벌 매크로 지표 (안전한 문자열 결합 테이블 구조)
 st.subheader("🌐 글로벌 매크로 지표")
 us10_status = "🟢" if (us10 and us10 < 4.75) else "🚨"
 us30_status = "🟢" if (us30 and us30 < 5.20) else "🚨"
@@ -144,46 +139,46 @@ us30_txt = f"{us30:.2f}%" if us30 else "N/A"
 wti_txt = f"${wti:.2f}" if wti else "N/A"
 copper_txt = f"${copper:.2f}" if copper else "N/A"
 
-macro_table_html = f"""
-<table style="width:100%; border-collapse:collapse; text-align:center; background-color:rgba(128,128,128,0.04); border:1px solid rgba(128,128,128,0.15); border-radius:4px; font-size:10px;">
-  <tr style="color:gray; font-size:8px; background-color:rgba(128,128,128,0.02);">
-    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); width:25%;">美 10년<br>(4.75%)</th>
-    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:25%;">美 30년<br>(5.20%)</th>
-    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:25%;">WTI 원유<br>(120)</th>
-    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:25%;">구리 가격<br>(5.0)</th>
-  </tr>
-  <tr style="font-weight:bold;">
-    <td style="padding:6px; white-space:nowrap;">{us10_status} {us10_txt}</td>
-    <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15); white-space:nowrap;">{us30_status} {us30_txt}</td>
-    <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15); white-space:nowrap;">{wti_status} {wti_txt}</td>
-    <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15); white-space:nowrap;">{copper_status} {copper_txt}</td>
-  </tr>
-</table>
-"""
-st.markdown(macro_table_html, unsafe_allow_html=True)
+macro_table_lines = [
+    '<table style="width:100%; border-collapse:collapse; text-align:center; background-color:rgba(128,128,128,0.04); border:1px solid rgba(128,128,128,0.15); border-radius:4px; font-size:10px;">',
+    '  <tr style="color:gray; font-size:8px; background-color:rgba(128,128,128,0.02);">',
+    '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); width:25%;">美 10년<br>(4.75%)</th>',
+    '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:25%;">美 30년<br>(5.20%)</th>',
+    '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:25%;">WTI 원유<br>(120)</th>',
+    '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:25%;">구리 가격<br>(5.0)</th>',
+    '  </tr>',
+    '  <tr style="font-weight:bold;">',
+    f'    <td style="padding:6px; white-space:nowrap;">{us10_status} {us10_txt}</td>',
+    f'    <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15); white-space:nowrap;">{us30_status} {us30_txt}</td>',
+    f'    <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15); white-space:nowrap;">{wti_status} {wti_txt}</td>',
+    f'    <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15); white-space:nowrap;">{copper_status} {copper_txt}</td>',
+    '  </tr>',
+    '</table>'
+]
+st.markdown("".join(macro_table_lines), unsafe_allow_html=True)
 
 
-# 3. 엔비디아 지표 (🚨 안전한 모바일용 테이블 정렬 구조)
+# 3. 엔비디아 지표 (안전한 문자열 결합 테이블 구조)
 st.subheader("🍏 엔비디아 지표")
 if nvda_price:
     nvda_status = "🟢" if nvda_drawdown > -10 else ("🟡" if nvda_drawdown > -20 else "🔴")
-    nvda_table_html = f"""
-    <table style="width:100%; border-collapse:collapse; text-align:center; background-color:rgba(128,128,128,0.04); border:1px solid rgba(128,128,128,0.15); border-radius:4px; font-size:10px;">
-      <tr style="color:gray; font-size:8px; background-color:rgba(128,128,128,0.02);">
-        <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); width:33%;">현재가</th>
-        <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:33%;">전고점 (ATH)</th>
-        <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:34%;">ATH 대비 (-20%)</th>
-      </tr>
-      <tr style="font-weight:bold;">
-        <td style="padding:6px;">${nvda_price:.2f}</td>
-        <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15);">${nvda_ath:.2f}</td>
-        <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15); white-space:nowrap;">{nvda_status} {nvda_drawdown:.2f}%</td>
-      </tr>
-    </table>
-    """
-    st.markdown(nvda_table_html, unsafe_allow_html=True)
+    nvda_table_lines = [
+        '<table style="width:100%; border-collapse:collapse; text-align:center; background-color:rgba(128,128,128,0.04); border:1px solid rgba(128,128,128,0.15); border-radius:4px; font-size:10px;">',
+        '  <tr style="color:gray; font-size:8px; background-color:rgba(128,128,128,0.02);">',
+        '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); width:33%;">현재가</th>',
+        '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:33%;">전고점 (ATH)</th>',
+        '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:34%;">ATH 대비 (-20%)</th>',
+        '  </tr>',
+        '  <tr style="font-weight:bold;">',
+        f'    <td style="padding:6px;">${nvda_price:.2f}</td>',
+        f'    <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15);">${nvda_ath:.2f}</td>',
+        f'    <td style="padding:6px; border-left:1px solid rgba(128,128,128,0.15); white-space:nowrap;">{nvda_status} {nvda_drawdown:.2f}%</td>',
+        '  </tr>',
+        '</table>'
+    ]
+    st.markdown("".join(nvda_table_lines), unsafe_allow_html=True)
 
-# 차트 탭 (인덱스로 확실하게 차트 구분 분리)
+# 차트 탭
 t1, t2, t3 = st.tabs(["NVDA", "삼성전자", "TSMC"])
 with t1:
     if nvda_hist is not None: st.line_chart(nvda_hist["Close"], height=100)
@@ -195,19 +190,15 @@ with t3:
     if tsmc_hist is not None: st.line_chart(tsmc_hist["Close"], height=100)
 
 
-# 4. 📊 밸류에이션 점검 섹션 (🚨 안전한 모바일용 테이블 정렬 구조)
+# 4. 📊 밸류에이션 점검 섹션 (멀티라인 트리플 따옴표 제거 구조)
 st.markdown("<hr style='margin: 10px 0; border:0; border-top:1px dashed rgba(128,128,128,0.2);'/>", unsafe_allow_html=True)
 st.subheader("📊 밸류에이션 점검 (기준: 비율 1.0 미만)")
 
 # [선행 PER 영역]
 st.markdown("#### ⏩ 12M 선행(Forward) PER")
 f_status = "🟢안정" if forward_ratio < 0.7 else ("🟡주의" if forward_ratio < 1.0 else "🔴고평가")
-f_table_html = f"""
-<table style="width:100%; border-collapse:collapse; text-align:center; background-color:rgba(128,128,128,0.04); border:1px solid rgba(128,128,128,0.15); border-radius:4px; font-size:10px;">
-  <tr style="color:gray; font-size:8px; background-color:rgba(128,128,128,0.02);">
-    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); width:33%;">삼성 선행</th>
-    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:33%;">TSMC 선행</th>
-    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:34%;">비율 (상태)</th>
-  </tr>
-  <tr style="font-weight:bold;">
-    <td style="padding:6px;">{samsung_f_pe:.2f}</td>
+f_table_lines = [
+    '<table style="width:100%; border-collapse:collapse; text-align:center; background-color:rgba(128,128,128,0.04); border:1px solid rgba(128,128,128,0.15); border-radius:4px; font-size:10px;">',
+    '  <tr style="color:gray; font-size:8px; background-color:rgba(128,128,128,0.02);">',
+    '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); width:33%;">삼성 선행</th>',
+    '    <th style="padding:4px; border-bottom:1px solid rgba(128,128,128,0.15); border-left:1px solid rgba(128,128,128,0.15); width:33%;">TSMC 선행</th>',
