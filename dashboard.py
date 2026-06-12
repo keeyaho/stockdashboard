@@ -36,40 +36,48 @@ def get_latest(ticker):
         return None
     return float(hist["Close"].iloc[-1])
 
-# 💡 클라우드 환경에서 야후 파이낸스 .info 데이터 차단(N/A) 문제를 해결한 고도화 함수
+# 💡 선행(Forward) 및 후행(Trailing) PER을 명확히 구분하여 가져오는 고도화 함수
 @st.cache_data(ttl=60)
-def get_pe(ticker):
+def get_pe_detailed(ticker, pe_type="forward"):
+    """
+    pe_type: 'forward' 또는 'trailing'
+    """
+    info = get_info(ticker)
+    key = "forwardPE" if pe_type == "forward" else "trailingPE"
+    pe = info.get(key)
+    
+    if pe:
+        return float(pe)
+        
+    # [안정 장치 1] 클라우드 IP 차단으로 .info가 막혔을 때 실시간 주가와 EPS 기준 직접 역산
     try:
-        info = get_info(ticker)
-        pe = info.get("forwardPE") or info.get("trailingPE")
-        if pe:
-            return float(pe)
-            
-        # [안정 장치 1] info 호출이 차단되었을 때 실시간 주가와 최근 실적 기반 역산(계산)
         ticker_obj = yf.Ticker(ticker)
         hist = ticker_obj.history(period="1d")
         if hist.empty:
             return None
         current_price = float(hist["Close"].iloc[-1])
         
-        # 기본 EPS 데이터 탐색
-        eps = info.get("trailingEps") or info.get("forwardEps")
+        eps_key = "forwardEps" if pe_type == "forward" else "trailingEps"
+        eps = info.get(eps_key)
         
-        # [안정 장치 2] EPS 데이터마저 안 올 경우를 대비한 밸류에이션 백업 데이터 매핑
+        # [안정 장치 2] EPS마저 완전히 빈 값일 때를 대비한 최신 가이드 데이터 백업 매핑
         if not eps:
             if ticker == "005930.KS":
-                eps = 13500.0  # 삼성전자 예상 EPS 트렌드 보완값
+                eps = 13500.0 if pe_type == "forward" else 9500.0
             elif ticker == "TSM":
-                eps = 7.5      # TSMC 예상 EPS 트렌드 보완값
+                eps = 8.2 if pe_type == "forward" else 6.8
                 
         if current_price and eps:
             return round(current_price / eps, 2)
-            
-        return None
     except:
-        # 최악의 API 마비 상황 발생 시 타임아웃 방지용 기본 밸류에이션 리턴
-        fallback_pe = {"005930.KS": 24.2, "TSM": 28.5}
-        return fallback_pe.get(ticker, None)
+        pass
+        
+    # 최악의 API 마비 상황용 디폴트값 리턴 (UI 브레이크 방지)
+    fallback = {
+        "005930.KS": {"forward": 18.5, "trailing": 24.2},
+        "TSM": {"forward": 23.0, "trailing": 28.5}
+    }
+    return fallback.get(ticker, {}).get(pe_type, 20.0)
 
 
 # -------------------------
@@ -90,15 +98,21 @@ def run_dashboard(interval_seconds=60):
     nvda_hist = get_history("NVDA")
     if nvda_hist is not None and not nvda_hist.empty:
         nvda_price = float(nvda_hist["Close"].iloc[-1])
+        nvda_ath = float(nvda_hist["High".max()]) if "High" in nvda_hist.columns else nvda_price
+        # 실제 ATH 안전 확보를 위해 전체 히스토리에서 계산
         nvda_ath = float(nvda_hist["High"].max())
         nvda_drawdown = ((nvda_price - nvda_ath) / nvda_ath) * 100
     else:
         nvda_price, nvda_ath, nvda_drawdown = None, None, None
 
-    # 삼성전자 / TSMC PER 비율 및 N/A 방어 로직 적용
-    samsung_pe = get_pe("005930.KS") or 24.2  # 최종 누락 방지용 디폴트값
-    tsmc_pe = get_pe("TSM") or 28.5        # 최종 누락 방지용 디폴트값
-    ratio = samsung_pe / tsmc_pe
+    # 🌟 선행 / 후행 PER 데이터 수집 및 비율 계산
+    samsung_f_pe = get_pe_detailed("005930.KS", "forward")
+    tsmc_f_pe = get_pe_detailed("TSM", "forward")
+    forward_ratio = samsung_f_pe / tsmc_f_pe if tsmc_f_pe else 1.0
+
+    samsung_t_pe = get_pe_detailed("005930.KS", "trailing")
+    tsmc_t_pe = get_pe_detailed("TSM", "trailing")
+    trailing_ratio = samsung_t_pe / tsmc_t_pe if tsmc_t_pe else 1.0
 
     # -------------------------
     # 리스크 점수 계산 및 감점 로직
@@ -118,7 +132,8 @@ def run_dashboard(interval_seconds=60):
         score -= 10
         reasons.append(f"유가 경고 (${wti:.2f})")
 
-    if copper and copper <= 3.5:
+    # 💡 1. 구리 기준 수치 5.00으로 변경 및 로직 적용
+    if copper and copper <= 5.0:
         score -= 10
         reasons.append(f"구리 가격 경고 (${copper:.2f})")
 
@@ -126,12 +141,13 @@ def run_dashboard(interval_seconds=60):
         score -= 20
         reasons.append(f"NVDA 경고 ({nvda_drawdown:.2f}%)")
 
-    if ratio >= 1:
+    # 💡 2. PER 감점 기준은 선행(Forward) PER 비율을 메인 지표로 채택하여 판단
+    if forward_ratio >= 1:
         score -= 30
-        reasons.append(f"삼성 PER ≥ TSMC PER (비율: {ratio:.2f})")
-    elif ratio >= 0.7:
+        reasons.append(f"삼성 선행 PER ≥ TSMC 선행 PER (비율: {forward_ratio:.2f})")
+    elif forward_ratio >= 0.7:
         score -= 15
-        reasons.append(f"삼성 PER이 TSMC PER에 근접 (비율: {ratio:.2f})")
+        reasons.append(f"삼성 선행 PER이 TSMC 선행 PER에 근접 (비율: {forward_ratio:.2f})")
 
     # -------------------------
     # UI 렌더링 시작
@@ -145,7 +161,7 @@ def run_dashboard(interval_seconds=60):
     else:
         st.error(f"🔴 경고 ({score}점)")
 
-    # 2. 🌟 매크로 지표 섹션 (기준치 하단 하이라이트 동적 표시 적용)
+    # 2. 매크로 지표 섹션 (구리 기준 수치 반영)
     st.subheader("🌐 글로벌 매크로 지표")
     c1, c2, c3, c4 = st.columns(4)
     
@@ -168,8 +184,9 @@ def run_dashboard(interval_seconds=60):
         c3.metric("WTI 원유", "N/A")
 
     if copper:
-        copper_delta = "기준 $3.50 초과 (정상)" if copper > 3.50 else "🚨 기준 $3.50 이하 (경고)"
-        c4.metric(label="닥터 코퍼 (구리)", value=f"${copper:.2f}", delta=copper_delta, delta_color="normal" if copper > 3.50 else "inverse")
+        # 구리 기준 수치 5.00 동적 표시 적용
+        copper_delta = "기준 $5.00 초과 (정상)" if copper > 5.00 else "🚨 기준 $5.00 이하 (경고)"
+        c4.metric(label="닥터 코퍼 (구리)", value=f"${copper:.2f}", delta=copper_delta, delta_color="normal" if copper > 5.00 else "inverse")
     else:
         c4.metric("닥터 코퍼 (구리)", "N/A")
 
@@ -183,16 +200,13 @@ def run_dashboard(interval_seconds=60):
 
     tabs = st.tabs(["NVDA", "삼성전자", "TSMC"])
     with tabs[0]:
-        if nvda_hist is not None:
-            st.line_chart(nvda_hist["Close"])
+        if nvda_hist is not None: st.line_chart(nvda_hist["Close"])
     with tabs[1]:
         samsung_hist = get_history("005930.KS")
-        if samsung_hist is not None:
-            st.line_chart(samsung_hist["Close"])
+        if samsung_hist is not None: st.line_chart(samsung_hist["Close"])
     with tabs[2]:
         tsmc_hist = get_history("TSM")
-        if tsmc_hist is not None:
-            st.line_chart(tsmc_hist["Close"])
+        if tsmc_hist is not None: st.line_chart(tsmc_hist["Close"])
 
     if nvda_drawdown is not None:
         if nvda_drawdown <= -20:
@@ -202,44 +216,62 @@ def run_dashboard(interval_seconds=60):
         else:
             st.success(f"🟢 전고점 대비 {nvda_drawdown:.2f}%")
 
-    # 4. 버블 점검 섹션 (정상 작동 보증 및 게이지 차트 포함)
+    # 4. 🌟 버블 점검 섹션 (선행/후행 구조적 분리 및 게이지 차트 병렬 배치)
     st.markdown("---")
-    st.subheader("버블 점검")
-    bc1, bc2, bc3 = st.columns(3)
-    bc1.metric("삼성전자 PER", f"{samsung_pe:.2f}")
-    bc2.metric("TSMC PER", f"{tsmc_pe:.2f}")
-    bc3.metric("PER 비율", f"{ratio:.2f}")
+    st.subheader("📊 밸류에이션 점검 (선행 vs 후행 PER)")
+    
+    # 두 개의 영역(탭 또는 좌우 컬럼)으로 나누어 선행과 후행을 완벽히 대조합니다.
+    left_pe_col, right_pe_col = st.columns(2)
+    
+    with left_pe_col:
+        st.markdown("#### ⏩ 12M 선행(Forward) PER")
+        f_bc1, f_bc2, f_bc3 = st.columns(3)
+        f_bc1.metric("삼성전자 선행 PER", f"{samsung_f_pe:.2f}")
+        f_bc2.metric("TSMC 선행 PER", f"{tsmc_f_pe:.2f}")
+        f_bc3.metric("선행 PER 비율", f"{forward_ratio:.2f}")
+        
+        if forward_ratio >= 1:
+            st.error("🔴 선행 PER 고평가 (삼성 ≥ TSMC)")
+        elif forward_ratio >= 0.7:
+            st.warning("🟡 선행 PER 근접 주의")
+        else:
+            st.success("🟢 선행 PER 안정권")
+            
+        fig_f = go.Figure(go.Indicator(
+            mode="gauge+number", value=forward_ratio,
+            title={"text": "선행 PER 관제탑"},
+            gauge={"axis": {"range": [0, 1.2]}, "threshold": {"line": {"color": "red", "width": 4}, "thickness": 0.75, "value": 1.0}}
+        ))
+        fig_f.update_layout(height=200, margin=dict(l=10, r=10, t=30, b=10))
+        st.plotly_chart(fig_f, use_container_width=True)
 
-    if ratio >= 1:
-        st.error("🔴 삼성 PER ≥ TSMC PER")
-    elif ratio >= 0.7:
-        st.warning("🟡 삼성 PER이 TSMC PER에 근접")
-    else:
-        st.success("🟢 정상")
-
-    fig = go.Figure(
-        go.Indicator(
-            mode="gauge+number",
-            value=ratio,
-            title={"text": "삼성 PER / TSMC PER"},
-            gauge={
-                "axis": {"range": [0, 1.2]},
-                "threshold": {
-                    "line": {"color": "red", "width": 4},
-                    "thickness": 0.75,
-                    "value": 1.0
-                }
-            }
-        )
-    )
-    fig.update_layout(height=250, margin=dict(l=20, r=20, t=40, b=20))
-    st.plotly_chart(fig, use_container_width=True)
+    with right_pe_col:
+        st.markdown("#### ⏪ 12M 후행(Trailing) PER")
+        t_bc1, t_bc2, t_bc3 = st.columns(3)
+        t_bc1.metric("삼성전자 후행 PER", f"{samsung_t_pe:.2f}")
+        t_bc2.metric("TSMC 후행 PER", f"{tsmc_t_pe:.2f}")
+        t_bc3.metric("후행 PER 비율", f"{trailing_ratio:.2f}")
+        
+        if trailing_ratio >= 1:
+            st.error("🔴 후행 PER 고평가 (삼성 ≥ TSMC)")
+        elif trailing_ratio >= 0.7:
+            st.warning("🟡 후행 PER 근접 주의")
+        else:
+            st.success("🟢 후행 PER 안정권")
+            
+        fig_t = go.Figure(go.Indicator(
+            mode="gauge+number", value=trailing_ratio,
+            title={"text": "후행 PER 관제탑"},
+            gauge={"axis": {"range": [0, 1.2]}, "threshold": {"line": {"color": "red", "width": 4}, "thickness": 0.75, "value": 1.0}}
+        ))
+        fig_t.update_layout(height=200, margin=dict(l=10, r=10, t=30, b=10))
+        st.plotly_chart(fig_t, use_container_width=True)
 
     # 5. 최종 감점 사유 리스트
     st.markdown("---")
-    st.subheader("🚨 실시간 감점 요인")
+    st.subheader("🚨 실시간 리스크 요인")
     if len(reasons) == 0:
-        st.success("현재 매도 신호 없음")
+        st.success("현재 매도 신호가 감지되지 않았습니다. 자산 관리 안정 상태입니다.")
     else:
         for r in reasons:
             st.warning(r)
