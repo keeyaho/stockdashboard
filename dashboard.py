@@ -130,7 +130,7 @@ if reasons:
         for r in reasons:
             st.markdown(f"<div style='font-size:9px; color:#f85149; padding:1px 0;'>• {r}</div>", unsafe_allow_html=True)
 
-# 2. 글로벌 매크로 지표 (문자열 결합 오류 해결 및 기준치 유지)
+# 2. 글로벌 매크로 지표
 st.subheader("🌐 글로벌 매크로 지표")
 us10_status = "🟢" if (us10 and us10 < 4.75) else "🚨"
 us30_status = "🟢" if (us30 and us30 < 5.20) else "🚨"
@@ -142,47 +142,32 @@ us30_txt = f"{us30:.2f}%" if us30 else "N/A"
 wti_txt = f"${wti:.2f}" if wti else "N/A"
 copper_txt = f"${copper:.2f}" if copper else "N/A"
 
-macro_html = """
-    <div style="display: flex; justify-content: space-between; align-items: center; background-color: rgba(128,128,128,0.04); padding: 5px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.15);">
-        <div style="text-align: center; flex: 1;">
-            <div style="font-size: 8px; color: gray; white-space: nowrap;">美 10년 (기준:4.75%)</div>
-            <div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{0} {1}</div>
-        </div>
-        <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 18px;"></div>
-        <div style="text-align: center; flex: 1;">
-            <div style="font-size: 8px; color: gray; white-space: nowrap;">美 30년 (기준:5.20%)</div>
-            <div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{2} {3}</div>
-        </div>
-        <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 18px;"></div>
-        <div style="text-align: center; flex: 1;">
-            <div style="font-size: 8px; color: gray; white-space: nowrap;">WTI 원유 (기준:120)</div>
-            <div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{4} {5}</div>
-        </div>
-        <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 18px;"></div>
-        <div style="text-align: center; flex: 1;">
-            <div style="font-size: 8px; color: gray; white-space: nowrap;">구리 가격 (기준:5.0)</div>
-            <div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{6} {7}</div>
-        </div>
-    </div>
-""".format(us10_status, us10_txt, us30_status, us30_txt, wti_status, wti_txt, copper_status, copper_txt)
+macro_html = (
+    '<div style="display:flex; justify-content:space-between; align-items:center; background-color:rgba(128,128,128,0.04); padding:5px; border-radius:4px; border:1px solid rgba(128,128,128,0.15);">'
+    '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray; white-space:nowrap;">美 10년 (기준:4.75%)</div><div style="font-size:10px; font-weight:bold; white-space:nowrap;">' + us10_status + ' ' + us10_txt + '</div></div>'
+    '<div style="border-left:1px solid rgba(128,128,128,0.15); height:18px;"></div>'
+    '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray; white-space:nowrap;">美 30년 (기준:5.20%)</div><div style="font-size:10px; font-weight:bold; white-space:nowrap;">' + us30_status + ' ' + us30_txt + '</div></div>'
+    '<div style="border-left:1px solid rgba(128,128,128,0.15); height:18px;"></div>'
+    '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray; white-space:nowrap;">WTI 원유 (기준:120)</div><div style="font-size:10px; font-weight:bold; white-space:nowrap;">' + wti_status + ' ' + wti_txt + '</div></div>'
+    '<div style="border-left:1px solid rgba(128,128,128,0.15); height:18px;"></div>'
+    '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray; white-space:nowrap;">구리 가격 (기준:5.0)</div><div style="font-size:10px; font-weight:bold; white-space:nowrap;">' + copper_status + ' ' + copper_txt + '</div></div>'
+    '</div>'
+)
 st.markdown(macro_html, unsafe_allow_html=True)
 
 # 3. 엔비디아 지표
 st.subheader("🍏 엔비디아 지표")
 if nvda_price:
     nvda_status = "🟢" if nvda_drawdown > -10 else ("🟡" if nvda_drawdown > -20 else "🔴")
-    nvda_html = """
-        <div style="display: flex; justify-content: space-between; align-items: center; background-color: rgba(128,128,128,0.04); padding: 5px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.15);">
-            <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">현재가</div><div style="font-size: 10px; font-weight: bold;">${0:.2f}</div></div>
-            <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 16px;"></div>
-            <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">전고점(ATH)</div><div style="font-size: 10px; font-weight: bold;">${1:.2f}</div></div>
-            <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 16px;"></div>
-            <div style="text-align: center; flex: 1;">
-                <div style="font-size: 8px; color: gray; white-space: nowrap;">ATH 대비 (기준:-20%)</div>
-                <div style="font-size: 10px; font-weight: bold; white-space: nowrap;">{2} {3:.2f}%</div>
-            </div>
-        </div>
-    """.format(nvda_price, nvda_ath, nvda_status, nvda_drawdown)
+    nvda_html = (
+        '<div style="display:flex; justify-content:space-between; align-items:center; background-color:rgba(128,128,128,0.04); padding:5px; border-radius:4px; border:1px solid rgba(128,128,128,0.15);">'
+        '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray;">현재가</div><div style="font-size:10px; font-weight:bold;">$' + f"{nvda_price:.2f}" + '</div></div>'
+        '<div style="border-left:1px solid rgba(128,128,128,0.15); height:16px;"></div>'
+        '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray;">전고점(ATH)</div><div style="font-size:10px; font-weight:bold;">$' + f"{nvda_ath:.2f}" + '</div></div>'
+        '<div style="border-left:1px solid rgba(128,128,128,0.15); height:16px;"></div>'
+        '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray; white-space:nowrap;">ATH 대비 (기준:-20%)</div><div style="font-size:10px; font-weight:bold; white-space:nowrap;">' + nvda_status + ' ' + f"{nvda_drawdown:.2f}%" + '</div></div>'
+        '</div>'
+    )
     st.markdown(nvda_html, unsafe_allow_html=True)
 
 # 차트 탭
@@ -196,14 +181,16 @@ with t3:
     tsmc_hist = get_history("TSM")
     if tsmc_hist is not None: st.line_chart(tsmc_hist["Close"], height=100)
 
-# 4. 📊 밸류에이션 점검 섹션 (오류 원인 f-string 전면 제거)
-st.markdown("<hr style='margin: 10px 0; border:0; border-top:1px dashed rgba(128,128,128,0.2);'/>", unsafe_allow_html=True)
+# 4. 📊 밸류에이션 점검 섹션 (멀티라인 따옴표 완전 철거 후 단일형 한 줄 결합 구조로 변경)
+st.markdown("<hr style='margin:10px 0; border:0; border-top:1px dashed rgba(128,128,128,0.2);'/>", unsafe_allow_html=True)
 st.subheader("📊 밸류에이션 점검 (기준: 삼성/TSMC 비율 1.0 미만)")
 
 # [선행 PER 영역]
 st.markdown("#### ⏩ 12M 선행(Forward) PER")
 f_status = "🟢안정" if forward_ratio < 0.7 else ("🟡주의" if forward_ratio < 1.0 else "🔴고평가")
-f_pe_html = """
-    <div style="display: flex; justify-content: space-between; align-items: center; background-color: rgba(128,128,128,0.04); padding: 5px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.15);">
-        <div style="text-align: center; flex: 1;"><div style="font-size: 8px; color: gray;">삼성 선행</div><div style="font-size: 10px; font-weight: bold;">{0:.2f}</div></div>
-        <div style="border-left: 1px solid rgba(128,128,128,0.15); height: 16px;"></div>
+f_pe_html = (
+    '<div style="display:flex; justify-content:space-between; align-items:center; background-color:rgba(128,128,128,0.04); padding:5px; border-radius:4px; border:1px solid rgba(128,128,128,0.15);">'
+    '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray;">삼성 선행</div><div style="font-size:10px; font-weight:bold;">' + f"{samsung_f_pe:.2f}" + '</div></div>'
+    '<div style="border-left:1px solid rgba(128,128,128,0.15); height:16px;"></div>'
+    '<div style="text-align:center; flex:1;"><div style="font-size:8px; color:gray;">TSMC 선행</div><div style="font-size:10px; font-weight:bold;">' + f"{tsmc_f_pe:.2f}" + '</div></div>'
+    '<div style="border-left:1px solid rgba(128,128,128,0.15); height:16px;"></div>'
