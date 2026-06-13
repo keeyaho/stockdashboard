@@ -91,27 +91,31 @@ def save_per_history(samsung_f_pe, tsmc_f_pe, forward_ratio, samsung_t_pe, tsmc_
     
     new_row = pd.DataFrame([{
         "date": today,
-        "samsung_f_pe": samsung_f_pe,
-        "tsmc_f_pe": tsmc_f_pe,
+        "samsung_f_pe": round(samsung_f_pe, 2),
+        "tsmc_f_pe": round(tsmc_f_pe, 2),
         "forward_ratio": round(forward_ratio, 4),
-        "samsung_t_pe": samsung_t_pe,
-        "tsmc_t_pe": tsmc_t_pe,
+        "samsung_t_pe": round(samsung_t_pe, 2),
+        "tsmc_t_pe": round(tsmc_t_pe, 2),
         "trailing_ratio": round(trailing_ratio, 4)
     }])
 
     if file_path.exists():
         try:
             df = pd.read_csv(file_path)
-            if today not in df["date"].astype(str).values:
+            # 오늘 날짜가 이미 있으면 최신값으로 업데이트
+            if today in df["date"].astype(str).values:
+                df = df[df["date"].astype(str) != today]
                 df = pd.concat([df, new_row], ignore_index=True)
-                df.to_csv(file_path, index=False)
-        except Exception:
-            pass
+            else:
+                df = pd.concat([df, new_row], ignore_index=True)
+            df.to_csv(file_path, index=False)
+        except Exception as e:
+            st.warning(f"CSV 업데이트 실패: {e}")
     else:
         try:
             new_row.to_csv(file_path, index=False)
-        except Exception:
-            pass
+        except Exception as e:
+            st.warning(f"CSV 생성 실패: {e}")
 
 # -------------------------
 # ⚡ 데이터 수집 및 연산 실행
@@ -227,38 +231,41 @@ try:
     history_df = pd.read_csv("per_history.csv")
     if len(history_df) > 0:
         history_df["date"] = pd.to_datetime(history_df["date"])
+        # 최근 90일 데이터만 표시
+        history_df = history_df[history_df["date"] >= pd.Timestamp.now() - pd.Timedelta(days=90)]
         
-        fig_f_ratio = go.Figure()
-        fig_f_ratio.add_trace(
-            go.Scatter(
-                x=history_df["date"],
-                y=history_df["forward_ratio"],
-                mode="lines+markers",
-                name="선행 비율",
-                line=dict(color="#1f77b4", width=2),
-                marker=dict(size=6)
+        if len(history_df) > 0:
+            fig_f_ratio = go.Figure()
+            fig_f_ratio.add_trace(
+                go.Scatter(
+                    x=history_df["date"],
+                    y=history_df["forward_ratio"],
+                    mode="lines+markers",
+                    name="선행 비율",
+                    line=dict(color="#1f77b4", width=2),
+                    marker=dict(size=6)
+                )
             )
-        )
-        
-        fig_f_ratio.add_hline(
-            y=1.0,
-            line_dash="dash",
-            line_color="red",
-            annotation_text="경고선 (1.0)",
-            annotation_position="right"
-        )
-        
-        fig_f_ratio.update_layout(
-            height=200,
-            margin=dict(l=10, r=10, t=20, b=10),
-            yaxis_title="삼성 / TSMC",
-            xaxis_title="날짜",
-            hovermode="x unified"
-        )
-        
-        st.plotly_chart(fig_f_ratio, use_container_width=True)
-except Exception:
-    pass
+            
+            fig_f_ratio.add_hline(
+                y=1.0,
+                line_dash="dash",
+                line_color="red",
+                annotation_text="경고선 (1.0)",
+                annotation_position="right"
+            )
+            
+            fig_f_ratio.update_layout(
+                height=200,
+                margin=dict(l=10, r=10, t=20, b=10),
+                yaxis_title="삼성 / TSMC",
+                xaxis_title="날짜",
+                hovermode="x unified"
+            )
+            
+            st.plotly_chart(fig_f_ratio, use_container_width=True)
+except Exception as e:
+    st.warning(f"선행 PER 차트 오류: {e}")
 
 
 # [후행 PER 영역]
@@ -281,38 +288,41 @@ try:
     history_df = pd.read_csv("per_history.csv")
     if len(history_df) > 0:
         history_df["date"] = pd.to_datetime(history_df["date"])
+        # 최근 90일 데이터만 표시
+        history_df = history_df[history_df["date"] >= pd.Timestamp.now() - pd.Timedelta(days=90)]
         
-        fig_t_ratio = go.Figure()
-        fig_t_ratio.add_trace(
-            go.Scatter(
-                x=history_df["date"],
-                y=history_df["trailing_ratio"],
-                mode="lines+markers",
-                name="후행 비율",
-                line=dict(color="#ff7f0e", width=2),
-                marker=dict(size=6)
+        if len(history_df) > 0:
+            fig_t_ratio = go.Figure()
+            fig_t_ratio.add_trace(
+                go.Scatter(
+                    x=history_df["date"],
+                    y=history_df["trailing_ratio"],
+                    mode="lines+markers",
+                    name="후행 비율",
+                    line=dict(color="#ff7f0e", width=2),
+                    marker=dict(size=6)
+                )
             )
-        )
-        
-        fig_t_ratio.add_hline(
-            y=1.0,
-            line_dash="dash",
-            line_color="red",
-            annotation_text="경고선 (1.0)",
-            annotation_position="right"
-        )
-        
-        fig_t_ratio.update_layout(
-            height=200,
-            margin=dict(l=10, r=10, t=20, b=10),
-            yaxis_title="삼성 / TSMC",
-            xaxis_title="날짜",
-            hovermode="x unified"
-        )
-        
-        st.plotly_chart(fig_t_ratio, use_container_width=True)
-except Exception:
-    pass
+            
+            fig_t_ratio.add_hline(
+                y=1.0,
+                line_dash="dash",
+                line_color="red",
+                annotation_text="경고선 (1.0)",
+                annotation_position="right"
+            )
+            
+            fig_t_ratio.update_layout(
+                height=200,
+                margin=dict(l=10, r=10, t=20, b=10),
+                yaxis_title="삼성 / TSMC",
+                xaxis_title="날짜",
+                hovermode="x unified"
+            )
+            
+            st.plotly_chart(fig_t_ratio, use_container_width=True)
+except Exception as e:
+    st.warning(f"후행 PER 차트 오류: {e}")
 
 
 # 🔄 [안전한 브라우저 새로고침] 60초마다 화면 새로고침
