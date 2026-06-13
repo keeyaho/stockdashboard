@@ -218,54 +218,58 @@ with st.container(border=True):
     st.write(f"**삼성 선행 PER** : {samsung_f_pe:.2f} | **TSMC 선행 PER** : {tsmc_f_pe:.2f}")
     st.write(f"**선행 비율 (삼성/TSMC)** : **{forward_ratio:.2f}** ({f_status})")
 
+# 레이아웃: 왼쪽 게이지, 오른쪽 차트
+col_gauge, col_chart = st.columns([1, 2])
+
 fig_f = go.Figure(go.Indicator(
     mode="gauge+number", value=forward_ratio,
     gauge={"axis": {"range": [0, 1.2], "tickmode": "array", "tickvals": [0, 0.6, 1.2], "tickfont": {"size": 7}}, "threshold": {"line": {"color": "red", "width": 2}, "thickness": 0.5, "value": 1.0}}
 ))
-fig_f.update_layout(height=75, margin=dict(l=50, r=50, t=15, b=5))
-st.plotly_chart(fig_f, use_container_width=True)
+fig_f.update_layout(height=140, margin=dict(l=10, r=10, t=10, b=10))
+with col_gauge:
+    st.plotly_chart(fig_f, use_container_width=True)
 
-# 선행 PER 추이 차트
-st.markdown("##### 📈 선행 PER 비율 추이")
-try:
-    history_df = pd.read_csv("per_history.csv")
-    if len(history_df) > 0:
-        history_df["date"] = pd.to_datetime(history_df["date"])
-        # 최근 90일 데이터만 표시
-        history_df = history_df[history_df["date"] >= pd.Timestamp.now() - pd.Timedelta(days=90)]
-        
+with col_chart:
+    st.markdown("##### 📈 선행 PER 비율 추이")
+    try:
+        history_df = pd.read_csv("per_history.csv")
         if len(history_df) > 0:
-            fig_f_ratio = go.Figure()
-            fig_f_ratio.add_trace(
-                go.Scatter(
-                    x=history_df["date"],
-                    y=history_df["forward_ratio"],
-                    mode="lines+markers",
-                    name="선행 비율",
-                    line=dict(color="#1f77b4", width=2),
-                    marker=dict(size=6)
+            history_df["date"] = pd.to_datetime(history_df["date"])
+            # 최근 90일 데이터만 표시
+            history_df = history_df[history_df["date"] >= pd.Timestamp.now() - pd.Timedelta(days=90)]
+            
+            if len(history_df) > 0:
+                fig_f_ratio = go.Figure()
+                fig_f_ratio.add_trace(
+                    go.Scatter(
+                        x=history_df["date"],
+                        y=history_df["forward_ratio"],
+                        mode="lines+markers",
+                        name="선행 비율",
+                        line=dict(color="#1f77b4", width=2),
+                        marker=dict(size=6)
+                    )
                 )
-            )
-            
-            fig_f_ratio.add_hline(
-                y=1.0,
-                line_dash="dash",
-                line_color="red",
-                annotation_text="경고선 (1.0)",
-                annotation_position="right"
-            )
-            
-            fig_f_ratio.update_layout(
-                height=200,
-                margin=dict(l=10, r=10, t=20, b=10),
-                yaxis_title="삼성 / TSMC",
-                xaxis_title="날짜",
-                hovermode="x unified"
-            )
-            
-            st.plotly_chart(fig_f_ratio, use_container_width=True)
-except Exception as e:
-    st.warning(f"선행 PER 차트 오류: {e}")
+                
+                fig_f_ratio.add_hline(
+                    y=1.0,
+                    line_dash="dash",
+                    line_color="red",
+                    annotation_text="경고선 (1.0)",
+                    annotation_position="right"
+                )
+                
+                fig_f_ratio.update_layout(
+                    height=140,
+                    margin=dict(l=10, r=10, t=10, b=10),
+                    yaxis_title="삼성 / TSMC",
+                    xaxis_title="날짜",
+                    hovermode="x unified"
+                )
+                
+                st.plotly_chart(fig_f_ratio, use_container_width=True)
+    except Exception as e:
+        st.warning(f"선행 PER 차트 오류: {e}")
 
 
 # [후행 PER 영역]
@@ -275,54 +279,58 @@ with st.container(border=True):
     st.write(f"**삼성 후행 PER** : {samsung_t_pe:.2f} | **TSMC 후행 PER** : {tsmc_t_pe:.2f}")
     st.write(f"**후행 비율 (삼성/TSMC)** : **{trailing_ratio:.2f}** ({t_status})")
 
+# 레이아웃: 왼쪽 게이지, 오른쪽 차트
+col_gauge_t, col_chart_t = st.columns([1, 2])
+
 fig_t = go.Figure(go.Indicator(
     mode="gauge+number", value=trailing_ratio,
     gauge={"axis": {"range": [0, 1.2], "tickmode": "array", "tickvals": [0, 0.6, 1.2], "tickfont": {"size": 7}}, "threshold": {"line": {"color": "red", "width": 2}, "thickness": 0.5, "value": 1.0}}
 ))
-fig_t.update_layout(height=75, margin=dict(l=50, r=50, t=15, b=5))
-st.plotly_chart(fig_t, use_container_width=True)
+fig_t.update_layout(height=140, margin=dict(l=10, r=10, t=10, b=10))
+with col_gauge_t:
+    st.plotly_chart(fig_t, use_container_width=True)
 
-# 후행 PER 추이 차트
-st.markdown("##### 📈 후행 PER 비율 추이")
-try:
-    history_df = pd.read_csv("per_history.csv")
-    if len(history_df) > 0:
-        history_df["date"] = pd.to_datetime(history_df["date"])
-        # 최근 90일 데이터만 표시
-        history_df = history_df[history_df["date"] >= pd.Timestamp.now() - pd.Timedelta(days=90)]
-        
+with col_chart_t:
+    st.markdown("##### 📈 후행 PER 비율 추이")
+    try:
+        history_df = pd.read_csv("per_history.csv")
         if len(history_df) > 0:
-            fig_t_ratio = go.Figure()
-            fig_t_ratio.add_trace(
-                go.Scatter(
-                    x=history_df["date"],
-                    y=history_df["trailing_ratio"],
-                    mode="lines+markers",
-                    name="후행 비율",
-                    line=dict(color="#ff7f0e", width=2),
-                    marker=dict(size=6)
+            history_df["date"] = pd.to_datetime(history_df["date"])
+            # 최근 90일 데이터만 표시
+            history_df = history_df[history_df["date"] >= pd.Timestamp.now() - pd.Timedelta(days=90)]
+            
+            if len(history_df) > 0:
+                fig_t_ratio = go.Figure()
+                fig_t_ratio.add_trace(
+                    go.Scatter(
+                        x=history_df["date"],
+                        y=history_df["trailing_ratio"],
+                        mode="lines+markers",
+                        name="후행 비율",
+                        line=dict(color="#ff7f0e", width=2),
+                        marker=dict(size=6)
+                    )
                 )
-            )
-            
-            fig_t_ratio.add_hline(
-                y=1.0,
-                line_dash="dash",
-                line_color="red",
-                annotation_text="경고선 (1.0)",
-                annotation_position="right"
-            )
-            
-            fig_t_ratio.update_layout(
-                height=200,
-                margin=dict(l=10, r=10, t=20, b=10),
-                yaxis_title="삼성 / TSMC",
-                xaxis_title="날짜",
-                hovermode="x unified"
-            )
-            
-            st.plotly_chart(fig_t_ratio, use_container_width=True)
-except Exception as e:
-    st.warning(f"후행 PER 차트 오류: {e}")
+                
+                fig_t_ratio.add_hline(
+                    y=1.0,
+                    line_dash="dash",
+                    line_color="red",
+                    annotation_text="경고선 (1.0)",
+                    annotation_position="right"
+                )
+                
+                fig_t_ratio.update_layout(
+                    height=140,
+                    margin=dict(l=10, r=10, t=10, b=10),
+                    yaxis_title="삼성 / TSMC",
+                    xaxis_title="날짜",
+                    hovermode="x unified"
+                )
+                
+                st.plotly_chart(fig_t_ratio, use_container_width=True)
+    except Exception as e:
+        st.warning(f"후행 PER 차트 오류: {e}")
 
 
 # 🔄 [안전한 브라우저 새로고침] 60초마다 화면 새로고침
