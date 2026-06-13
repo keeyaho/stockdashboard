@@ -1,10 +1,6 @@
 import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
-import pandas as pd
-
-from pathlib import Path
-from datetime import datetime
 
 # 1. 페이지 설정 (모바일 최적화)
 st.set_page_config(
@@ -12,43 +8,26 @@ st.set_page_config(
     layout="centered"
 )
 
-# 🚨 [모바일 소형화 및 스타일 제어 CSS 전체 교체]
+# 🚨 [모바일 소형화 및 스타일 제어 CSS]
 st.markdown("""
     <style>
-
+    /* 여백 최소화 */
     .block-container {
         padding-top: 0.5rem !important;
         padding-bottom: 0.5rem !important;
         padding-left: 0.4rem !important;
         padding-right: 0.4rem !important;
     }
-
-    html, body, p, span, label, div {
-        font-size: 15px !important;
-    }
-
-    h3 {
-        font-size: 20px !important;
-        font-weight: bold;
-        margin-top: 12px !important;
-        margin-bottom: 8px !important;
-    }
-
-    h4 {
-        font-size: 17px !important;
-        font-weight: bold;
-        margin-top: 8px !important;
-        margin-bottom: 4px !important;
-    }
-
-    button[data-baseweb="tab"] p {
-        font-size: 15px !important;
-    }
-
+    /* 스마트폰 가독성을 위해 전체 기본 폰트 크기 세밀화 */
+    html, body, p, span, label, div { font-size: 11px !important; }
+    h3 { font-size: 13px !important; font-weight: bold; margin-top: 12px !important; margin-bottom: 6px !important; }
+    h4 { font-size: 11px !important; font-weight: bold; margin-top: 8px !important; margin-bottom: 2px !important; }
+    button[data-baseweb="tab"] p { font-size: 11px !important; }
+    
+    /* 카드 내부 간격 최소화 */
     div[data-testid="stVerticalBlockBorderWrapper"] > div {
-        padding: 10px !important;
+        padding: 6px !important;
     }
-
     </style>
 """, unsafe_allow_html=True)
 
@@ -101,34 +80,6 @@ def get_pe_detailed(ticker, pe_type="forward"):
     return fallback.get(ticker, {}).get(pe_type, 20.0)
 
 # -------------------------
-# PER 저장 함수 추가
-# -------------------------
-def save_per_history(samsung_f_pe, tsmc_f_pe, forward_ratio):
-    file_path = Path("per_history.csv")
-    today = datetime.now().strftime("%Y-%m-%d")
-    
-    new_row = pd.DataFrame([{
-        "date": today,
-        "samsung_forward_pe": samsung_f_pe,
-        "tsmc_forward_pe": tsmc_f_pe,
-        "ratio": round(forward_ratio, 4)
-    }])
-
-    if file_path.exists():
-        try:
-            df = pd.read_csv(file_path)
-            if today not in df["date"].astype(str).values:
-                df = pd.concat([df, new_row], ignore_index=True)
-                df.to_csv(file_path, index=False)
-        except Exception:
-            pass
-    else:
-        try:
-            new_row.to_csv(file_path, index=False)
-        except Exception:
-            pass
-
-# -------------------------
 # ⚡ 데이터 수집 및 연산 실행
 # -------------------------
 us10 = get_latest("^TNX")
@@ -152,98 +103,111 @@ samsung_t_pe = get_pe_detailed("005930.KS", "trailing")
 tsmc_t_pe = get_pe_detailed("TSM", "trailing")
 trailing_ratio = samsung_t_pe / tsmc_t_pe if tsmc_t_pe else 1.0
 
-# PER 계산 후 자동 저장 실행
-save_per_history(samsung_f_pe, tsmc_f_pe, forward_ratio)
-
-# 리스크 스코어링 및 구리 경고 로직 수정
+# 리스크 스코어링
 score = 100
 reasons = []
 if us10 and us10 >= 4.75: score -= 10; reasons.append(f"美 10년물 금리 경고 ({us10:.2f}%)")
 if us30 and us30 >= 5.20: score -= 10; reasons.append(f"美 30년물 금리 경고 ({us30:.2f}%)")
 if wti and wti >= 120: score -= 10; reasons.append(f"유가 경고 (${wti:.2f})")
-
-# 구리 가격 경고 수정 (5달러 이상일 때 경고 및 감점)
-if copper and copper >= 5.0:
-    score -= 10
-    reasons.append(f"구리 가격 경고 (${copper:.2f})")
-
-copper_status = "🟢정상" if (copper and copper < 5.00) else "🚨경고"
-
+if copper and copper <= 5.0: score -= 10; reasons.append(f"구리 가격 경고 (${copper:.2f})")
+if nvda_drawdown and nvda_drawdown <= -20: score -= 20; reasons.append(f"NVDA 경고 ({nvda_drawdown:.2f}%)")
+if forward_ratio >= 1: score -= 30; reasons.append(f"삼성 선행 PER ≥ TSMC ({forward_ratio:.2f})")
+elif forward_ratio >= 0.7: score -= 15; reasons.append(f"삼성 선행 PER TSMC 근접 ({forward_ratio:.2f})")
 
 # -------------------------
-# 📊 UI 및 차트 시각화 예시 (게이지 및 차트 추가 영역)
+# UI 렌더링 영역 (순정 컴포넌트 기반 무오류 보장)
 # -------------------------
-st.write(f"### 🛡️ 리스크 스코어: {score}점")
+
+# 1. 종합 상태 배너
+if score >= 80:
+    st.success(f"🟢 정상 ({score}점)")
+elif score >= 60:
+    st.warning(f"🟡 주의 ({score}점)")
+else:
+    st.error(f"🔴 경고 ({score}점)")
+
 if reasons:
-    for r in reasons:
-        st.write(f"- {r}")
+    with st.expander("🚨 주요 리스크 요인", expanded=True):
+        for r in reasons:
+            st.write(f"• {r}")
 
-# [예시용 게이지 생성 객체 - 기존 코드 유지용]
+
+# 2. 글로벌 매크로 지표 (순정 박스 레이아웃 - 모바일 잘림 완벽 해결)
+st.subheader("🌐 글로벌 매크로 지표")
+us10_status = "🟢정상" if (us10 and us10 < 4.75) else "🚨경고"
+us30_status = "🟢정상" if (us30 and us30 < 5.20) else "🚨경고"
+wti_status = "🟢정상" if (wti and wti < 120) else "🚨경고"
+copper_status = "🟢정상" if (copper and copper > 5.00) else "🚨경고"
+
+with st.container(border=True):
+    st.write(f"**美 10년물 (기준 4.75%)** : {us10_status} | **{us10:.2f}%**" if us10 else "美 10년물 : N/A")
+    st.write(f"**美 30년물 (기준 5.20%)** : {us30_status} | **{us30:.2f}%**" if us30 else "美 30년물 : N/A")
+    st.write(f"**WTI 원유 (기준 120)** : {wti_status} | **${wti:.2f}**" if wti else "WTI 원유 : N/A")
+    st.write(f"**구리 가격 (기준 5.0)** : {copper_status} | **${copper:.2f}**" if copper else "구리 가격 : N/A")
+
+
+# 3. 엔비디아 지표 (순정 박스 레이아웃)
+st.subheader("🍏 엔비디아 지표")
+if nvda_price:
+    nvda_status = "🟢정상" if nvda_drawdown > -10 else ("🟡주의" if nvda_drawdown > -20 else "🚨경고")
+    with st.container(border=True):
+        st.write(f"**현재가** : ${nvda_price:.2f} | **전고점(ATH)** : ${nvda_ath:.2f}")
+        st.write(f"**ATH 대비 (기준 -20%)** : {nvda_status} | **{nvda_drawdown:.2f}%**")
+
+# 차트 탭 (높이 110px 컴팩트화)
+t1, t2, t3 = st.tabs(["NVDA", "삼성전자", "TSMC"])
+with t1:
+    if nvda_hist is not None: st.line_chart(nvda_hist["Close"], height=110)
+with t2:
+    samsung_hist = get_history("005930.KS")
+    if samsung_hist is not None: st.line_chart(samsung_hist["Close"], height=110)
+with t3:
+    tsmc_hist = get_history("TSM")
+    if tsmc_hist is not None: st.line_chart(tsmc_hist["Close"], height=110)
+
+
+# 4. 📊 밸류에이션 점검 섹션 (순정 구조로 선행 / 후행 완벽 표기)
+st.markdown("---")
+st.subheader("📊 밸류에이션 점검 (기준: 비율 1.0 미만)")
+
+# [선행 PER 영역]
+st.markdown("#### ⏩ 12M 선행(Forward) PER")
+f_status = "🟢안정" if forward_ratio < 0.7 else ("🟡주의" if forward_ratio < 1.0 else "🚨고평가")
+with st.container(border=True):
+    st.write(f"**삼성 선행 PER** : {samsung_f_pe:.2f} | **TSMC 선행 PER** : {tsmc_f_pe:.2f}")
+    st.write(f"**선행 비율 (삼성/TSMC)** : **{forward_ratio:.2f}** ({f_status})")
+
 fig_f = go.Figure(go.Indicator(
-    mode = "gauge+number",
-    value = forward_ratio,
-    title = {'text': "선행 PER 비율 (삼성/TSMC)"},
-    gauge = {'axis': {'range': [None, 2]},
-             'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 1.0}}
+    mode="gauge+number", value=forward_ratio,
+    gauge={"axis": {"range": [0, 1.2], "tickmode": "array", "tickvals": [0, 0.6, 1.2], "tickfont": {"size": 7}}, "threshold": {"line": {"color": "red", "width": 2}, "thickness": 0.5, "value": 1.0}}
 ))
+fig_f.update_layout(height=75, margin=dict(l=50, r=50, t=15, b=5))
+st.plotly_chart(fig_f, use_container_width=True)
+
+
+# [후행 PER 영역]
+st.markdown("#### ⏪ 12M 후행(Trailing) PER")
+t_status = "🟢안정" if trailing_ratio < 0.7 else ("🟡주의" if trailing_ratio < 1.0 else "🚨고평가")
+with st.container(border=True):
+    st.write(f"**삼성 후행 PER** : {samsung_t_pe:.2f} | **TSMC 후행 PER** : {tsmc_t_pe:.2f}")
+    st.write(f"**후행 비율 (삼성/TSMC)** : **{trailing_ratio:.2f}** ({t_status})")
 
 fig_t = go.Figure(go.Indicator(
-    mode = "gauge+number",
-    value = trailing_ratio,
-    title = {'text': "후행 PER 비율 (삼성/TSMC)"},
-    gauge = {'axis': {'range': [None, 2]},
-             'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 1.0}}
+    mode="gauge+number", value=trailing_ratio,
+    gauge={"axis": {"range": [0, 1.2], "tickmode": "array", "tickvals": [0, 0.6, 1.2], "tickfont": {"size": 7}}, "threshold": {"line": {"color": "red", "width": 2}, "thickness": 0.5, "value": 1.0}}
 ))
-
-# 5. 게이지 크게 조절 (높이 75 -> 120 변경)
-fig_f.update_layout(
-    height=120,
-    margin=dict(l=50, r=50, t=15, b=5)
-)
-
-fig_t.update_layout(
-    height=120,
-    margin=dict(l=50, r=50, t=15, b=5)
-)
-
-# 화면 출력
-st.plotly_chart(fig_f, use_container_width=True)
+fig_t.update_layout(height=75, margin=dict(l=50, r=50, t=15, b=5))
 st.plotly_chart(fig_t, use_container_width=True)
 
 
-# 6. PER 추이 차트 추가 (후행 PER 출력 바로 밑에 배치)
-st.markdown("#### 📈 삼성/TSMC 선행 PER 비율 추이")
-
-try:
-    history_df = pd.read_csv("per_history.csv")
-
-    if len(history_df) > 0:
-        history_df["date"] = pd.to_datetime(history_df["date"])
-
-        fig_ratio = go.Figure()
-
-        # 데이터가 1개일 때도 점으로 표현될 수 있도록 모드 유지
-        fig_ratio.add_trace(
-            go.Scatter(
-                x=history_df["date"],
-                y=history_df["ratio"],
-                mode="lines+markers",
-                name="PER Ratio"
-            )
-        )
-
-        fig_ratio.add_hline(
-            y=1.0,
-            line_dash="dash",
-            annotation_text="경고선"
-        )
-
-        fig_ratio.update_layout(
-            height=260,
-            margin=dict(l=10, r=10, t=20, b=10),
-            yaxis_title="삼성 / TSMC"
-        )
-
-        st.plotly_chart(fig_ratio, use_container_width=True)
-except Exception:
-    pass
+# 🔄 [안전한 브라우저 새로고침] 60초마다 화면 새로고침
+st.components.v1.html(
+    """
+    <script>
+    setTimeout(function(){
+        window.parent.location.reload();
+    }, 60000);
+    </script>
+    """,
+    height=0
+)
