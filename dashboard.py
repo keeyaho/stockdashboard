@@ -91,27 +91,31 @@ def save_per_history(samsung_f_pe, tsmc_f_pe, forward_ratio, samsung_t_pe, tsmc_
     
     new_row = pd.DataFrame([{
         "date": today,
-        "samsung_f_pe": samsung_f_pe,
-        "tsmc_f_pe": tsmc_f_pe,
+        "samsung_f_pe": round(samsung_f_pe, 2),
+        "tsmc_f_pe": round(tsmc_f_pe, 2),
         "forward_ratio": round(forward_ratio, 4),
-        "samsung_t_pe": samsung_t_pe,
-        "tsmc_t_pe": tsmc_t_pe,
+        "samsung_t_pe": round(samsung_t_pe, 2),
+        "tsmc_t_pe": round(tsmc_t_pe, 2),
         "trailing_ratio": round(trailing_ratio, 4)
     }])
 
     if file_path.exists():
         try:
             df = pd.read_csv(file_path)
-            if today not in df["date"].astype(str).values:
+            # 오늘 날짜가 이미 있으면 최신값으로 업데이트
+            if today in df["date"].astype(str).values:
+                df = df[df["date"].astype(str) != today]
                 df = pd.concat([df, new_row], ignore_index=True)
-                df.to_csv(file_path, index=False)
-        except Exception:
-            pass
+            else:
+                df = pd.concat([df, new_row], ignore_index=True)
+            df.to_csv(file_path, index=False)
+        except Exception as e:
+            st.warning(f"CSV 업데이트 실패: {e}")
     else:
         try:
             new_row.to_csv(file_path, index=False)
-        except Exception:
-            pass
+        except Exception as e:
+            st.warning(f"CSV 생성 실패: {e}")
 
 # -------------------------
 # ⚡ 데이터 수집 및 연산 실행
@@ -242,7 +246,7 @@ with st.container(border=True):
 col_gauge, col_chart = st.columns([1, 2])
 
 fig_f = go.Figure(go.Indicator(
-    mode="gauge+number", value=forward_ratio,
+    mode="gauge+number", value=round(forward_ratio,4),
     gauge={"axis": {"range": [0, 1.2], "tickmode": "array", "tickvals": [0, 0.6, 1.2], "tickfont": {"size": 7}}, "threshold": {"line": {"color": "red", "width": 2}, "thickness": 0.5, "value": 1.0}}
 ))
 fig_f.update_layout(height=140, margin=dict(l=10, r=10, t=10, b=10))
@@ -255,7 +259,28 @@ with col_chart:
         history_df = pd.read_csv("per_history.csv")
         if len(history_df) > 0:
             history_df["date"] = pd.to_datetime(history_df["date"])
-            # 최근 90일 데이터만 표시
+            # sync today's row with live computed values so chart matches gauge
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            history_df["date_str"] = history_df["date"].dt.strftime("%Y-%m-%d")
+            live_row = {
+                "date": pd.to_datetime(today_str),
+                "samsung_f_pe": round(samsung_f_pe, 2),
+                "tsmc_f_pe": round(tsmc_f_pe, 2),
+                "forward_ratio": round(forward_ratio, 4),
+                "samsung_t_pe": round(samsung_t_pe, 2),
+                "tsmc_t_pe": round(tsmc_t_pe, 2),
+                "trailing_ratio": round(trailing_ratio, 4)
+            }
+            if today_str in history_df["date_str"].values:
+                history_df.loc[history_df["date_str"] == today_str, ["samsung_f_pe","tsmc_f_pe","forward_ratio","samsung_t_pe","tsmc_t_pe","trailing_ratio"]] = [
+                    live_row["samsung_f_pe"], live_row["tsmc_f_pe"], live_row["forward_ratio"], live_row["samsung_t_pe"], live_row["tsmc_t_pe"], live_row["trailing_ratio"]
+                ]
+            else:
+                # append today's live row
+                history_df = pd.concat([history_df, pd.DataFrame([live_row])], ignore_index=True)
+
+            # recent 90 days
+            history_df["date"] = pd.to_datetime(history_df["date"])
             history_df = history_df[history_df["date"] >= pd.Timestamp.now() - pd.Timedelta(days=90)]
             
             if len(history_df) > 0:
@@ -303,7 +328,7 @@ with st.container(border=True):
 col_gauge_t, col_chart_t = st.columns([1, 2])
 
 fig_t = go.Figure(go.Indicator(
-    mode="gauge+number", value=trailing_ratio,
+    mode="gauge+number", value=round(trailing_ratio,4),
     gauge={"axis": {"range": [0, 1.2], "tickmode": "array", "tickvals": [0, 0.6, 1.2], "tickfont": {"size": 7}}, "threshold": {"line": {"color": "red", "width": 2}, "thickness": 0.5, "value": 1.0}}
 ))
 fig_t.update_layout(height=140, margin=dict(l=10, r=10, t=10, b=10))
@@ -316,7 +341,28 @@ with col_chart_t:
         history_df = pd.read_csv("per_history.csv")
         if len(history_df) > 0:
             history_df["date"] = pd.to_datetime(history_df["date"])
-            # 최근 90일 데이터만 표시
+            # sync today's row with live computed values so chart matches gauge
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            history_df["date_str"] = history_df["date"].dt.strftime("%Y-%m-%d")
+            live_row = {
+                "date": pd.to_datetime(today_str),
+                "samsung_f_pe": round(samsung_f_pe, 2),
+                "tsmc_f_pe": round(tsmc_f_pe, 2),
+                "forward_ratio": round(forward_ratio, 4),
+                "samsung_t_pe": round(samsung_t_pe, 2),
+                "tsmc_t_pe": round(tsmc_t_pe, 2),
+                "trailing_ratio": round(trailing_ratio, 4)
+            }
+            if today_str in history_df["date_str"].values:
+                history_df.loc[history_df["date_str"] == today_str, ["samsung_f_pe","tsmc_f_pe","forward_ratio","samsung_t_pe","tsmc_t_pe","trailing_ratio"]] = [
+                    live_row["samsung_f_pe"], live_row["tsmc_f_pe"], live_row["forward_ratio"], live_row["samsung_t_pe"], live_row["tsmc_t_pe"], live_row["trailing_ratio"]
+                ]
+            else:
+                # append today's live row
+                history_df = pd.concat([history_df, pd.DataFrame([live_row])], ignore_index=True)
+
+            # recent 90 days
+            history_df["date"] = pd.to_datetime(history_df["date"])
             history_df = history_df[history_df["date"] >= pd.Timestamp.now() - pd.Timedelta(days=90)]
             
             if len(history_df) > 0:
