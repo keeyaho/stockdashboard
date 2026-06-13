@@ -18,11 +18,11 @@ st.markdown("""
         padding-left: 0.4rem !important;
         padding-right: 0.4rem !important;
     }
-    /* 스마트폰 가독성을 위해 전체 기본 폰트 크기 세밀화 */
-    html, body, p, span, label, div { font-size: 11px !important; }
-    h3 { font-size: 13px !important; font-weight: bold; margin-top: 12px !important; margin-bottom: 6px !important; }
-    h4 { font-size: 11px !important; font-weight: bold; margin-top: 8px !important; margin-bottom: 2px !important; }
-    button[data-baseweb="tab"] p { font-size: 11px !important; }
+    /* 스마트폰 가독성을 위해 폰트 크기 확대 */
+    html, body, p, span, label, div { font-size: 16px !important; }
+    h3 { font-size: 22px !important; font-weight: bold; margin-top: 12px !important; margin-bottom: 6px !important; }
+    h4 { font-size: 18px !important; font-weight: bold; margin-top: 8px !important; margin-bottom: 2px !important; }
+    button[data-baseweb="tab"] p { font-size: 16px !important; }
     
     /* 카드 내부 간격 최소화 */
     div[data-testid="stVerticalBlockBorderWrapper"] > div {
