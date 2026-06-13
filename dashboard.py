@@ -1,6 +1,9 @@
 import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
+import pandas as pd
+from pathlib import Path
+from datetime import datetime
 
 # 1. 페이지 설정 (모바일 최적화)
 st.set_page_config(
@@ -80,6 +83,37 @@ def get_pe_detailed(ticker, pe_type="forward"):
     return fallback.get(ticker, {}).get(pe_type, 20.0)
 
 # -------------------------
+# PER 저장 함수 추가
+# -------------------------
+def save_per_history(samsung_f_pe, tsmc_f_pe, forward_ratio, samsung_t_pe, tsmc_t_pe, trailing_ratio):
+    file_path = Path("per_history.csv")
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    new_row = pd.DataFrame([{
+        "date": today,
+        "samsung_f_pe": samsung_f_pe,
+        "tsmc_f_pe": tsmc_f_pe,
+        "forward_ratio": round(forward_ratio, 4),
+        "samsung_t_pe": samsung_t_pe,
+        "tsmc_t_pe": tsmc_t_pe,
+        "trailing_ratio": round(trailing_ratio, 4)
+    }])
+
+    if file_path.exists():
+        try:
+            df = pd.read_csv(file_path)
+            if today not in df["date"].astype(str).values:
+                df = pd.concat([df, new_row], ignore_index=True)
+                df.to_csv(file_path, index=False)
+        except Exception:
+            pass
+    else:
+        try:
+            new_row.to_csv(file_path, index=False)
+        except Exception:
+            pass
+
+# -------------------------
 # ⚡ 데이터 수집 및 연산 실행
 # -------------------------
 us10 = get_latest("^TNX")
@@ -102,6 +136,9 @@ forward_ratio = samsung_f_pe / tsmc_f_pe if tsmc_f_pe else 1.0
 samsung_t_pe = get_pe_detailed("005930.KS", "trailing")
 tsmc_t_pe = get_pe_detailed("TSM", "trailing")
 trailing_ratio = samsung_t_pe / tsmc_t_pe if tsmc_t_pe else 1.0
+
+# PER 계산 후 자동 저장 실행
+save_per_history(samsung_f_pe, tsmc_f_pe, forward_ratio, samsung_t_pe, tsmc_t_pe, trailing_ratio)
 
 # 리스크 스코어링
 score = 100
@@ -184,6 +221,45 @@ fig_f = go.Figure(go.Indicator(
 fig_f.update_layout(height=75, margin=dict(l=50, r=50, t=15, b=5))
 st.plotly_chart(fig_f, use_container_width=True)
 
+# 선행 PER 추이 차트
+st.markdown("##### 📈 선행 PER 비율 추이")
+try:
+    history_df = pd.read_csv("per_history.csv")
+    if len(history_df) > 0:
+        history_df["date"] = pd.to_datetime(history_df["date"])
+        
+        fig_f_ratio = go.Figure()
+        fig_f_ratio.add_trace(
+            go.Scatter(
+                x=history_df["date"],
+                y=history_df["forward_ratio"],
+                mode="lines+markers",
+                name="선행 비율",
+                line=dict(color="#1f77b4", width=2),
+                marker=dict(size=6)
+            )
+        )
+        
+        fig_f_ratio.add_hline(
+            y=1.0,
+            line_dash="dash",
+            line_color="red",
+            annotation_text="경고선 (1.0)",
+            annotation_position="right"
+        )
+        
+        fig_f_ratio.update_layout(
+            height=200,
+            margin=dict(l=10, r=10, t=20, b=10),
+            yaxis_title="삼성 / TSMC",
+            xaxis_title="날짜",
+            hovermode="x unified"
+        )
+        
+        st.plotly_chart(fig_f_ratio, use_container_width=True)
+except Exception:
+    pass
+
 
 # [후행 PER 영역]
 st.markdown("#### ⏪ 12M 후행(Trailing) PER")
@@ -198,6 +274,45 @@ fig_t = go.Figure(go.Indicator(
 ))
 fig_t.update_layout(height=75, margin=dict(l=50, r=50, t=15, b=5))
 st.plotly_chart(fig_t, use_container_width=True)
+
+# 후행 PER 추이 차트
+st.markdown("##### 📈 후행 PER 비율 추이")
+try:
+    history_df = pd.read_csv("per_history.csv")
+    if len(history_df) > 0:
+        history_df["date"] = pd.to_datetime(history_df["date"])
+        
+        fig_t_ratio = go.Figure()
+        fig_t_ratio.add_trace(
+            go.Scatter(
+                x=history_df["date"],
+                y=history_df["trailing_ratio"],
+                mode="lines+markers",
+                name="후행 비율",
+                line=dict(color="#ff7f0e", width=2),
+                marker=dict(size=6)
+            )
+        )
+        
+        fig_t_ratio.add_hline(
+            y=1.0,
+            line_dash="dash",
+            line_color="red",
+            annotation_text="경고선 (1.0)",
+            annotation_position="right"
+        )
+        
+        fig_t_ratio.update_layout(
+            height=200,
+            margin=dict(l=10, r=10, t=20, b=10),
+            yaxis_title="삼성 / TSMC",
+            xaxis_title="날짜",
+            hovermode="x unified"
+        )
+        
+        st.plotly_chart(fig_t_ratio, use_container_width=True)
+except Exception:
+    pass
 
 
 # 🔄 [안전한 브라우저 새로고침] 60초마다 화면 새로고침
