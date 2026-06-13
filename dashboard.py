@@ -91,31 +91,27 @@ def save_per_history(samsung_f_pe, tsmc_f_pe, forward_ratio, samsung_t_pe, tsmc_
     
     new_row = pd.DataFrame([{
         "date": today,
-        "samsung_f_pe": round(samsung_f_pe, 2),
-        "tsmc_f_pe": round(tsmc_f_pe, 2),
+        "samsung_f_pe": samsung_f_pe,
+        "tsmc_f_pe": tsmc_f_pe,
         "forward_ratio": round(forward_ratio, 4),
-        "samsung_t_pe": round(samsung_t_pe, 2),
-        "tsmc_t_pe": round(tsmc_t_pe, 2),
+        "samsung_t_pe": samsung_t_pe,
+        "tsmc_t_pe": tsmc_t_pe,
         "trailing_ratio": round(trailing_ratio, 4)
     }])
 
     if file_path.exists():
         try:
             df = pd.read_csv(file_path)
-            # 오늘 날짜가 이미 있으면 최신값으로 업데이트
-            if today in df["date"].astype(str).values:
-                df = df[df["date"].astype(str) != today]
+            if today not in df["date"].astype(str).values:
                 df = pd.concat([df, new_row], ignore_index=True)
-            else:
-                df = pd.concat([df, new_row], ignore_index=True)
-            df.to_csv(file_path, index=False)
-        except Exception as e:
-            st.warning(f"CSV 업데이트 실패: {e}")
+                df.to_csv(file_path, index=False)
+        except Exception:
+            pass
     else:
         try:
             new_row.to_csv(file_path, index=False)
-        except Exception as e:
-            st.warning(f"CSV 생성 실패: {e}")
+        except Exception:
+            pass
 
 # -------------------------
 # ⚡ 데이터 수집 및 연산 실행
@@ -198,7 +194,31 @@ if nvda_price:
 # 차트 탭 (높이 110px 컴팩트화)
 t1, t2, t3 = st.tabs(["NVDA", "삼성전자", "TSMC"])
 with t1:
-    if nvda_hist is not None: st.line_chart(nvda_hist["Close"], height=110)
+    if nvda_hist is not None and not nvda_hist.empty:
+        df_nv = nvda_hist.copy()
+        df_nv.index = pd.to_datetime(df_nv.index)
+        x = df_nv.index
+        y = df_nv['Close']
+        minv = y.min()
+        maxv = y.max()
+
+        fig_nvda = go.Figure()
+        # 밴드(최저값 -> 최고값) 채우기: 먼저 최저값 라인 추가
+        fig_nvda.add_trace(go.Scatter(x=x, y=[minv]*len(x), mode='lines', line=dict(width=0), showlegend=False, hoverinfo='skip'))
+        # 최고값 라인 추가하고 이전 라인과 채움
+        fig_nvda.add_trace(go.Scatter(x=x, y=[maxv]*len(x), mode='lines', fill='tonexty', fillcolor='rgba(31,119,180,0.15)', line=dict(width=0), name='Range'))
+        # 종가 선 차트
+        fig_nvda.add_trace(go.Scatter(x=x, y=y, mode='lines', name='Close', line=dict(color='#1f77b4', width=2)))
+        # 최고/최저 포인트 표시
+        idx_max = y.idxmax()
+        idx_min = y.idxmin()
+        fig_nvda.add_trace(go.Scatter(x=[idx_max], y=[y.max()], mode='markers+text', marker=dict(color='red', size=8), name='High', text=['High'], textposition='top center'))
+        fig_nvda.add_trace(go.Scatter(x=[idx_min], y=[y.min()], mode='markers+text', marker=dict(color='green', size=8), name='Low', text=['Low'], textposition='bottom center'))
+
+        fig_nvda.update_layout(height=240, margin=dict(l=10, r=10, t=25, b=10), yaxis_title='Price', xaxis_title='Date', hovermode='x unified')
+        st.plotly_chart(fig_nvda, use_container_width=True)
+    else:
+        st.write("NVDA 데이터 없음")
 with t2:
     samsung_hist = get_history("005930.KS")
     if samsung_hist is not None: st.line_chart(samsung_hist["Close"], height=110)
