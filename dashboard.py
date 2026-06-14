@@ -83,39 +83,45 @@ def get_pe_detailed(ticker, pe_type="forward"):
     return fallback.get(ticker, {}).get(pe_type, 20.0)
 
 # -------------------------
-# PER 저장 함수 추가
+# PER 저장 함수 추가 (안전성 강화)
 # -------------------------
 def save_per_history(samsung_f_pe, tsmc_f_pe, forward_ratio, samsung_t_pe, tsmc_t_pe, trailing_ratio):
+    """Safe save to per_history.csv. Converts None/invalid values to NaN and logs success/failure to Streamlit UI."""
     file_path = Path("per_history.csv")
     today = datetime.now().strftime("%Y-%m-%d")
-    
-    new_row = pd.DataFrame([{
-        "date": today,
-        "samsung_f_pe": round(samsung_f_pe, 2),
-        "tsmc_f_pe": round(tsmc_f_pe, 2),
-        "forward_ratio": round(forward_ratio, 4),
-        "samsung_t_pe": round(samsung_t_pe, 2),
-        "tsmc_t_pe": round(tsmc_t_pe, 2),
-        "trailing_ratio": round(trailing_ratio, 4)
-    }])
 
-    if file_path.exists():
+    def safe_round(x, nd=2):
         try:
+            # allow numeric-like strings as well
+            return round(float(x), nd)
+        except Exception:
+            return float("nan")
+
+    try:
+        new_row = pd.DataFrame([{
+            "date": today,
+            "samsung_f_pe": safe_round(samsung_f_pe, 2),
+            "tsmc_f_pe": safe_round(tsmc_f_pe, 2),
+            "forward_ratio": safe_round(forward_ratio, 4),
+            "samsung_t_pe": safe_round(samsung_t_pe, 2),
+            "tsmc_t_pe": safe_round(tsmc_t_pe, 2),
+            "trailing_ratio": safe_round(trailing_ratio, 4)
+        }])
+
+        if file_path.exists():
             df = pd.read_csv(file_path)
-            # 오늘 날짜가 이미 있으면 최신값으로 업데이트
+            # 오늘 날짜가 이미 있으면 최신값으로 교체
             if today in df["date"].astype(str).values:
                 df = df[df["date"].astype(str) != today]
-                df = pd.concat([df, new_row], ignore_index=True)
-            else:
-                df = pd.concat([df, new_row], ignore_index=True)
+            df = pd.concat([df, new_row], ignore_index=True)
             df.to_csv(file_path, index=False)
-        except Exception as e:
-            st.warning(f"CSV 업데이트 실패: {e}")
-    else:
-        try:
+        else:
             new_row.to_csv(file_path, index=False)
-        except Exception as e:
-            st.warning(f"CSV 생성 실패: {e}")
+
+        st.info(f"PER 히스토리 저장됨: {today}")
+    except Exception as e:
+        # 상세 에러를 로그에 남기고 UI에 경고 표시
+        st.warning(f"PER 히스토리 저장 실패: {e}")
 
 # -------------------------
 # ⚡ 데이터 수집 및 연산 실행
