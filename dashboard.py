@@ -63,24 +63,88 @@ def get_latest(ticker):
 
 @st.cache_data(ttl=60)
 def get_pe_detailed(ticker, pe_type="forward"):
-    info = get_info(ticker)
-    key = "forwardPE" if pe_type == "forward" else "trailingPE"
-    pe = info.get(key)
-    if pe: return float(pe)
+    """Return a numeric PE (float). If unavailable, return float('nan').
+    This function is defensive about incoming data shapes (Series/arrays/strings).
+    """
     try:
+        info = get_info(ticker)
+        key = "forwardPE" if pe_type == "forward" else "trailingPE"
+        pe = info.get(key)
+        if pe is not None:
+            try:
+                return float(pe)
+            except Exception:
+                # fall through to other methods
+                pass
+
         ticker_obj = yf.Ticker(ticker)
         hist = ticker_obj.history(period="1d")
-        if hist.empty: return None
-        current_price = float(hist["Close"].iloc[-1])
+        if hist.empty:
+            return float('nan')
+        current_price = None
+        try:
+            current_price = float(hist["Close"].iloc[-1])
+        except Exception:
+            current_price = None
+
         eps_key = "forwardEps" if pe_type == "forward" else "trailingEps"
         eps = info.get(eps_key)
-        if not eps:
+        try:
+            eps = float(eps) if eps is not None else None
+        except Exception:
+            eps = None
+
+        if eps is None:
+            # domain-specific fallbacks
             if ticker == "005930.KS": eps = 13500.0 if pe_type == "forward" else 9500.0
             elif ticker == "TSM": eps = 8.2 if pe_type == "forward" else 6.8
-        if current_price and eps: return round(current_price / eps, 2)
-    except: pass
-    fallback = {"005930.KS": {"forward": 18.5, "trailing": 24.2}, "TSM": {"forward": 23.0, "trailing": 28.5}}
-    return fallback.get(ticker, {}).get(pe_type, 20.0)
+
+        if current_price and eps:
+            try:
+                return round(current_price / eps, 2)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # final fallback
+    try:
+        fallback = {"005930.KS": {"forward": 18.5, "trailing": 24.2}, "TSM": {"forward": 23.0, "trailing": 28.5}}
+        return float(fallback.get(ticker, {}).get(pe_type, 20.0))
+    except Exception:
+        return float('nan')
+
+# -------------------------
+# 안전한 나눗셈 헬퍼
+# -------------------------
+
+def safe_div(a, b, default=1.0):
+    """Safely divide a by b and return default on any error (including None, 0, non-scalar types)."""
+    try:
+        # handle pandas/numpy scalars/one-element arrays
+        if hasattr(a, '__len__') and not isinstance(a, (str, bytes)):
+            # try to convert to float directly; if it's array-like with length >1 this will fail and go to except
+            try:
+                a = float(a)
+            except Exception:
+                # if it's a pandas Series with one element, extract it
+                try:
+                    a = float(a.iloc[0])
+                except Exception:
+                    return default
+        if hasattr(b, '__len__') and not isinstance(b, (str, bytes)):
+            try:
+                b = float(b)
+            except Exception:
+                try:
+                    b = float(b.iloc[0])
+                except Exception:
+                    return default
+        if b == 0 or b is None:
+            return default
+        return float(a) / float(b)
+    except Exception:
+        return default
 
 # -------------------------
 # PER 저장 함수 추가 (안전성 강화)
@@ -141,11 +205,12 @@ else:
 
 samsung_f_pe = get_pe_detailed("005930.KS", "forward")
 tsmc_f_pe = get_pe_detailed("TSM", "forward")
-forward_ratio = samsung_f_pe / tsmc_f_pe if tsmc_f_pe else 1.0
+# use safe_div to avoid ambiguous truth checks and non-scalar types
+forward_ratio = safe_div(samsung_f_pe, tsmc_f_pe, default=1.0)
 
 samsung_t_pe = get_pe_detailed("005930.KS", "trailing")
 tsmc_t_pe = get_pe_detailed("TSM", "trailing")
-trailing_ratio = samsung_t_pe / tsmc_t_pe if tsmc_t_pe else 1.0
+trailing_ratio = safe_div(samsung_t_pe, tsmc_t_pe, default=1.0)
 
 # PER 계산 후 자동 저장 실행
 save_per_history(samsung_f_pe, tsmc_f_pe, forward_ratio, samsung_t_pe, tsmc_t_pe, trailing_ratio)
