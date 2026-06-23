@@ -489,6 +489,13 @@ st.components.v1.html(
     setTimeout(function(){
         window.parent.location.reload();
     }, 60000);
+
+    from fredapi import Fred
+
+fred = Fred(api_key="네API키")
+
+search = fred.search("Eastern Gas South")
+print(search.head(20))
     </script>
     """,
     height=0
