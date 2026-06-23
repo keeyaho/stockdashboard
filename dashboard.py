@@ -150,41 +150,53 @@ def safe_div(a, b, default=1.0):
 # PER 저장 함수 추가 (안전성 강화)
 # -------------------------
 def save_per_history(samsung_f_pe, tsmc_f_pe, forward_ratio, samsung_t_pe, tsmc_t_pe, trailing_ratio):
-    """Safe save to per_history.csv. Converts None/invalid values to NaN and logs success/failure to Streamlit UI."""
+    """PER 값이 정상일 때만 저장. NaN 데이터로 기존 기록을 오염시키지 않음."""
     file_path = Path("per_history.csv")
     today = datetime.now().strftime("%Y-%m-%d")
 
-    def safe_round(x, nd=2):
+    def valid(x):
         try:
-            # allow numeric-like strings as well
-            return round(float(x), nd)
+            x = float(x)
+            return pd.notna(x) and x > 0
         except Exception:
-            return float("nan")
+            return False
+
+    # 핵심 수정: PER 수집 실패 시 저장 금지
+    if not all([
+        valid(samsung_f_pe),
+        valid(tsmc_f_pe),
+        valid(samsung_t_pe),
+        valid(tsmc_t_pe)
+    ]):
+        st.warning(f"{today} PER 수집 실패 → CSV 저장 건너뜀")
+        return
 
     try:
         new_row = pd.DataFrame([{
             "date": today,
-            "samsung_f_pe": safe_round(samsung_f_pe, 2),
-            "tsmc_f_pe": safe_round(tsmc_f_pe, 2),
-            "forward_ratio": safe_round(forward_ratio, 4),
-            "samsung_t_pe": safe_round(samsung_t_pe, 2),
-            "tsmc_t_pe": safe_round(tsmc_t_pe, 2),
-            "trailing_ratio": safe_round(trailing_ratio, 4)
+            "samsung_f_pe": round(float(samsung_f_pe), 2),
+            "tsmc_f_pe": round(float(tsmc_f_pe), 2),
+            "forward_ratio": round(float(forward_ratio), 4),
+            "samsung_t_pe": round(float(samsung_t_pe), 2),
+            "tsmc_t_pe": round(float(tsmc_t_pe), 2),
+            "trailing_ratio": round(float(trailing_ratio), 4)
         }])
 
         if file_path.exists():
             df = pd.read_csv(file_path)
-            # 오늘 날짜가 이미 있으면 최신값으로 교체
+
+            # 이미 오늘 데이터가 있으면 정상 데이터만 교체
             if today in df["date"].astype(str).values:
                 df = df[df["date"].astype(str) != today]
-            df = pd.concat([df, new_row], ignore_index=True)
-            df.to_csv(file_path, index=False)
-        else:
-            new_row.to_csv(file_path, index=False)
 
+            df = pd.concat([df, new_row], ignore_index=True)
+        else:
+            df = new_row
+
+        df.to_csv(file_path, index=False)
         st.info(f"PER 히스토리 저장됨: {today}")
+
     except Exception as e:
-        # 상세 에러를 로그에 남기고 UI에 경고 표시
         st.warning(f"PER 히스토리 저장 실패: {e}")
 
 # -------------------------
