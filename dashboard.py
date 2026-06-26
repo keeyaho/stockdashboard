@@ -484,7 +484,6 @@ with col_chart_t:
 
 # 🔄 [안전한 브라우저 새로고침] 60초마다 화면 새로고침
 st.components.v1.html(
-    """
     <script>
     setTimeout(function(){
         window.parent.location.reload();
