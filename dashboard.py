@@ -5,9 +5,7 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 
-# ==========================================
-# 1. 페이지 설정 및 모바일 최적화 CSS 스타일링
-# ==========================================
+# 1. 페이지 설정 (모바일 최적화)
 st.set_page_config(
     page_title="AI 사이클 관제센터",
     layout="centered"
@@ -39,9 +37,9 @@ st.markdown("""
 # 상단 타이틀 컴팩트 디자인
 st.caption("📈 매도 점검 | AI 사이클 관제센터 (1분 자동 갱신)")
 
-# ==========================================
-# 2. 데이터 캐싱 및 로드 함수
-# ==========================================
+# -------------------------
+# 데이터 캐싱 및 로드 함수
+# -------------------------
 @st.cache_data(ttl=60)
 def get_history(ticker):
     try:
@@ -124,9 +122,11 @@ def safe_div(a, b, default=1.0):
     try:
         # handle pandas/numpy scalars/one-element arrays
         if hasattr(a, '__len__') and not isinstance(a, (str, bytes)):
+            # try to convert to float directly; if it's array-like with length >1 this will fail and go to except
             try:
                 a = float(a)
             except Exception:
+                # if it's a pandas Series with one element, extract it
                 try:
                     a = float(a.iloc[0])
                 except Exception:
@@ -146,7 +146,7 @@ def safe_div(a, b, default=1.0):
         return default
 
 # -------------------------
-# PER 저장 함수 (안전성 강화)
+# PER 저장 함수 추가 (안전성 강화)
 # -------------------------
 def save_per_history(samsung_f_pe, tsmc_f_pe, forward_ratio, samsung_t_pe, tsmc_t_pe, trailing_ratio):
     """PER 값이 정상일 때만 저장. NaN 데이터로 기존 기록을 오염시키지 않음."""
@@ -198,9 +198,9 @@ def save_per_history(samsung_f_pe, tsmc_f_pe, forward_ratio, samsung_t_pe, tsmc_
     except Exception as e:
         st.warning(f"PER 히스토리 저장 실패: {e}")
 
-# ==========================================
-# 3. ⚡ 데이터 수집 및 연산 실행
-# ==========================================
+# -------------------------
+# ⚡ 데이터 수집 및 연산 실행
+# -------------------------
 us10 = get_latest("^TNX")
 us30 = get_latest("^TYX")
 wti = get_latest("CL=F")
@@ -216,6 +216,7 @@ else:
 
 samsung_f_pe = get_pe_detailed("005930.KS", "forward")
 tsmc_f_pe = get_pe_detailed("TSM", "forward")
+# use safe_div to avoid ambiguous truth checks and non-scalar types
 forward_ratio = safe_div(samsung_f_pe, tsmc_f_pe, default=1.0)
 
 samsung_t_pe = get_pe_detailed("005930.KS", "trailing")
@@ -225,7 +226,7 @@ trailing_ratio = safe_div(samsung_t_pe, tsmc_t_pe, default=1.0)
 # PER 계산 후 자동 저장 실행
 save_per_history(samsung_f_pe, tsmc_f_pe, forward_ratio, samsung_t_pe, tsmc_t_pe, trailing_ratio)
 
-# 리스크 스코어링 시스템
+# 리스크 스코어링
 score = 100
 reasons = []
 if us10 and us10 >= 4.75: score -= 10; reasons.append(f"美 10년물 금리 경고 ({us10:.2f}%)")
@@ -236,11 +237,11 @@ if nvda_drawdown and nvda_drawdown <= -20: score -= 20; reasons.append(f"NVDA �
 if forward_ratio >= 1: score -= 30; reasons.append(f"삼성 선행 PER ≥ TSMC ({forward_ratio:.2f})")
 elif forward_ratio >= 0.7: score -= 15; reasons.append(f"삼성 선행 PER TSMC 근접 ({forward_ratio:.2f})")
 
-# ==========================================
-# 4. UI 렌더링 영역 (모바일 최적화 레이아웃)
-# ==========================================
+# -------------------------
+# UI 렌더링 영역 (순정 컴포넌트 기반 무오류 보장)
+# -------------------------
 
-# 4-1. 종합 상태 배너 
+# 1. 종합 상태 배너
 if score >= 80:
     st.success(f"🟢 정상 ({score}점)")
 elif score >= 60:
@@ -248,55 +249,10 @@ elif score >= 60:
 else:
     st.error(f"🔴 경고 ({score}점)")
 
-# 4-2. 리스크 요인 상세 내역
+# 2. 주요 리스크 요인 토글 (원래 끊겼던 구문을 정상 복구한 부분)
 if reasons:
-    with st.expander(f"🚨 주요 리스크 요인 ({len(reasons)}건)", expanded=True):
+    with st.expander("🚨 주요 리스크 요인", expanded=True):
         for reason in reasons:
-            st.markdown(f"• {reason}")
+            st.write(f"- {reason}")
 else:
-    st.caption("✅ 현재 감지된 거시 경제 및 밸류에이션 리스크가 없습니다.")
-
-st.divider()
-
-# 4-3. 탭 구성을 통한 세로 스크롤 압축 (모바일 가독성 핵심)
-tab1, tab2, tab3 = st.tabs(["📊 주요 지표", "🎯 PER 비교", "📈 히스토리"])
-
-with tab1:
-    st.subheader("📌 거시 경제 & 기술주 동향")
-    
-    # 2열 배치로 정보 밀도 향상
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric(label="美 10년물 국채금리", value=f"{us10:.2f}%" if us10 else "데이터 없음")
-        st.metric(label="WTI 원유 선물", value=f"${wti:.2f}" if wti else "데이터 없음")
-    with col2:
-        st.metric(label="美 30년물 국채금리", value=f"{us30:.2f}%" if us30 else "데이터 없음")
-        st.metric(label="구리 선물 가격", value=f"${copper:.2f}" if copper else "데이터 없음")
-        
-    st.markdown("---")
-    st.subheader("🍏 엔비디아(NVDA) 상태")
-    if nvda_price:
-        st.metric(
-            label="NVDA 종가 (전고점 대비 낙폭)", 
-            value=f"${nvda_price:.2f}", 
-            delta=f"{nvda_drawdown:.2f}%"
-        )
-    else:
-        st.error("엔비디아 데이터를 가져올 수 없습니다.")
-
-with tab2:
-    st.subheader("🔍 삼성전자 vs TSMC 밸류에이션")
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.metric(label="삼성전자 Forward PER", value=f"{samsung_f_pe:.2f}" if pd.notna(samsung_f_pe) else "-")
-        st.metric(label="삼성전자 Trailing PER", value=f"{samsung_t_pe:.2f}" if pd.notna(samsung_t_pe) else "-")
-    with c2:
-        st.metric(label="TSMC Forward PER", value=f"{tsmc_f_pe:.2f}" if pd.notna(tsmc_f_pe) else "-")
-        st.metric(label="TSMC Trailing PER", value=f"{tsmc_t_pe:.2f}" if pd.notna(tsmc_t_pe) else "-")
-        
-    st.markdown("---")
-    st.markdown(f"**💡 PER 상대 비율 (삼성 PER / TSMC PER)**")
-    st.markdown(f"- **선행(Forward) 비율:** `{forward_ratio:.4f}` *(1.0 이상 시 삼성 고평가 위험)*")
-    st.markdown(f"- **후행(Trailing) 비율:** `{trailing_ratio:.4f}`")
-
+    st.info("현재 감지된 리스크 요인이 없습니다.")
